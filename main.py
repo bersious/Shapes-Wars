@@ -14,17 +14,18 @@ def load_progress():
         try:
             with open(SAVE_FILE, 'r') as f:
                 data = json.load(f)
-                return data.get('unlocked_level', 1), data.get('has_selected_faction', False), data.get('has_seen_intro', False), data.get('has_beaten_game', False)
+                return data.get('unlocked_level', 1), data.get('has_selected_faction', False), data.get('has_seen_intro', False), data.get('has_beaten_game', False), data.get('has_seen_tutorial', False)
         except:
             pass
-    return 1, False, False, False
+    return 1, False, False, False, False
 
-def save_progress(unlocked_level, has_selected_faction, has_seen_intro, has_beaten_game=False):
+def save_progress(unlocked_level, has_selected_faction, has_seen_intro, has_seen_tutorial=False, has_beaten_game=False):
     with open(SAVE_FILE, 'w') as f:
         json.dump({
-            'unlocked_level': unlocked_level, 
+            'unlocked_level': unlocked_level,
             'has_selected_faction': has_selected_faction,
             'has_seen_intro': has_seen_intro,
+            'has_seen_tutorial': has_seen_tutorial,
             'has_beaten_game': has_beaten_game
         }, f)
 
@@ -77,19 +78,120 @@ INTRO_STORY_TEXTS = [
 ]
 
 CAMPAIGN_STORY = {
-    1: "Tiếng tù và chiến trận vang lên từ biên giới phía Bắc! Đại quân Bạch Quốc đã vượt qua dãy Bạch Sơn. Đội Trinh Sát Trắng đang dò đường tiến vào lãnh thổ. Nữ hoàng Thanh Hoa ra lệnh kích hoạt tuyến phòng thủ đầu tiên — những Nỏ Hắc Thạch cổ xưa đã ngủ yên trăm năm nay lại được đánh thức. Cuộc chiến sinh tồn của Hắc Quốc bắt đầu!",
-    2: "Tin xấu: Bạch Quốc triển khai Kỵ Binh Lướt — đơn vị cơ giới với tốc độ kinh hoàng. Chúng vượt qua tầm bắn trước khi Nỏ kịp ngắm! Nữ hoàng Thanh Hoa ra lệnh cho bộ lạc phía Đông dựng lên Tường Gai Bóng Đêm — hàng rào gai độc xuyên đội hình kẻ thù.",
-    3: "Mặt đất rung chuyển dưới bước chân của Thiết Giáp Trắng! Lớp giáp kim cương nhân tạo của chúng miễn nhiễm gần như mọi loại đạn. Nữ hoàng triệu tập hội đồng trưởng lão, và Trưởng lão Thắp Lửa đã đáp lại bằng ngọn Lửa Hồn Tổ Tiên — ngọn lửa tím đen thiêu rụi mọi thứ.",
-    4: "Bạch Quốc tung đợt tổng tấn công với số lượng chưa từng có! Lurker, Drifter, Brute — ồ ạt tràn vào như sóng thần. Tin vui: thợ rèn Hắc Quốc tìm ra cách Nâng cấp Tháp (Chuột Phải) bằng phù văn cổ đại. Hãy tối ưu hóa phòng tuyến, thưa Nữ hoàng!",
-    5: "Đặc Công Bóng Ma — sát thủ tàng hình với chip quang học. Đạn trượt, mắt thường không thể thấy. Giữa lúc tuyệt vọng, thầy phù thủy già nhất tộc Đen hoàn thành phát minh cả đời: Trụ Trì Hoãn — sóng năng lượng tối bóp méo không-thời gian, khiến kẻ thù chậm lại.",
-    6: "Phá Thành Giả xuất hiện! Chúng không đi qua tháp — chúng ĐÁNH SẬP tháp! Búa plasma nghiền nát phòng tuyến. Nữ hoàng Thanh Hoa ra lệnh kéo khẩu Đại Bác Sấm Đen — vũ khí thiên thạch — vào chiến trường. Mỗi phát bắn, một tiếng sấm, một kẻ thù ngã gục.",
-    7: "Ravager và Brute phối hợp tạo sóng công thành khổng lồ. Giáp dày phía trước, búa phá phía sau. Thợ rèn Hắc Quốc bẻ khóa bí mật Nâng cấp Cấp 3 — phù văn tối thượng từ cuốn sách cổ Vua cha để lại. Đây là cuộc chiến sinh tồn!",
-    8: "CẢNH BÁO TỐI THƯỢNG! Cỗ Máy Diệt Chủng — vũ khí tận diệt do đích thân vua NamDinh ra lệnh chế tạo — đang tiến về thành. Nữ hoàng nhớ lời cha: 'Khi kẻ thù đưa núi đến, con hãy ném lại cho chúng cả ngọn núi lửa.' Cối Đá Phún Thạch được đưa ra chiến trường!",
-    9: "Titan phá vỡ vòng ngoài. Đặc Công Bóng Ma lợi dụng hỗn loạn xâm nhập. Hắc Quốc bên bờ sụp đổ. Nữ hoàng Thanh Hoa đứng trên tường thành thì thầm: 'Cha ơi, con sẽ không để vương quốc này sụp đổ. Một người ngã xuống, vạn người đứng lên.' Hãy cầm cự bằng MỌI GIÁ!",
-    10: "Trận chiến cuối cùng! NamDinh tung toàn lực — Titan dẫn đầu, Brute, Phantom, Ravager theo sau. Nhưng Nữ hoàng có câu trả lời cuối cùng: Bẫy Hố Tử Thần — bẫy cổ xưa nhất, phù phép bởi bảy thầy phù thủy. 'Đây là đất của chúng ta. Và chúng ta sẽ bảo vệ nó.' Vinh quang thuộc về Hắc Quốc!"
+    1: """🌑 CỬA ẢI 1 — BÌNH MINH MÁU
+
+Đêm qua, ngọn lửa hiệu báo động bùng lên từ đỉnh Bạch Sơn. Khi bình minh ló dạng, viên quan trinh sát hớt hải phi ngựa về hoàng cung, quỳ xuống run rẩy: "Thưa Nữ hoàng... chúng đến rồi."
+
+Đại quân Bạch Quốc — hàng ngàn Trinh Sát Trắng — đã vượt biên giới. Chúng không mang theo lương thực. Không mang theo lều trại. Chỉ có vũ khí và lệnh của vua NamDinh: Không để lại một viên đá nào của Hắc Quốc còn đứng vững.
+
+Nữ hoàng Thanh Hoa đứng lặng trên tường thành, mái tóc đen tuyền phất bay trong gió lạnh. Ánh mắt nàng không hề run sợ — chỉ có một ngọn lửa âm ỉ đang bùng cháy bên trong. Nàng quay lại, giọng vang như sấm: "Đánh thức những Nỏ Hắc Thạch cổ. Đây là giờ chúng phải nói chuyện."
+
+⚔️ Kích hoạt Nỏ Hắc Thạch — Nỏ obsidian cổ trăm năm, mũi tên xuyên thủng mọi giáp nhẹ.""",
+    2: """🌑 CỬA ẢI 2 — GIÓ TRẮNG
+
+Mặt trận vừa ổn định, tin khẩn từ cánh trái ập đến: những bóng trắng di chuyển với tốc độ của gió đang lướt qua tầm bắn của Nỏ trước khi mũi tên kịp ngắm.
+
+Kỵ Binh Lướt — Drifter — những chiến binh trên ván trượt phản trọng lực, tự mãn gọi mình là 'Gió Trắng'. Chúng không đánh — chúng tràn qua. Và phía sau chúng là những làn sóng Trinh Sát dày đặc hơn trước.
+
+Trưởng lão bộ lạc phía Đông — một bà lão tóc trắng, lưng còng nhưng đôi mắt sáng như sao — bước vào lều chỉ huy, đặt lên bàn một cuộn da thú cũ kỹ. "Tường Gai Bóng Đêm, Nữ hoàng. Bẫy gai tẩm nọc của tổ tiên chúng tôi. Một mũi gai xuyên cả một hàng."
+
+⚔️ Mở khóa Tường Gai Phalanx — bắn xuyên hàng ngũ, làm chậm và gây sát thương diện rộng.""",
+    3: """🌑 CỬA ẢI 3 — GIÁP SẮT TIM ĐEN
+
+Chúng đến lúc nửa đêm. Tiếng rầm rập của bộ binh nặng đập lên mặt đất như tiếng trống trận. Ánh đuốc phản chiếu trên lớp giáp kim cương nhân tạo sáng loáng — đó là Thiết Giáp Trắng, đơn vị tinh nhuệ nhất của Bạch Quốc.
+
+Mũi tên của Nỏ Hắc Thạch bắn vào chúng và... rơi xuống đất. Gai của Tường Gai xuyên qua lớp giáp nhưng chỉ gây ra vết trầy xước. Binh lính Hắc Quốc hoảng loạn. Một tướng quân la hét: "Chúng không thể bị giết!"
+
+Nhưng Nữ hoàng Thanh Hoa nhớ lại lời cha truyền lại: Không có gì là bất tử trước lửa của tổ tiên.
+
+Giữa đêm tối, ngọn lửa tím đen của Ignis bùng lên — Lửa Hồn Tổ Tiên, thứ lửa thiêng từ dầu hắc ín không thể dập tắt. Tiếng la hét của Thiết Giáp Trắng vang lên trong đêm.
+
+⚔️ Mở khóa Ignis — Lửa Hồn Tổ Tiên, gây sát thương đốt cháy liên tục.""",
+    4: """🌑 CỬA ẢI 4 — CƠN HỒNG THỦY TRẮNG
+
+Vua NamDinh đứng trên đồi cao nhìn xuống chiến trường, mặt lạnh như băng. Ông ta đã đánh giá thấp Hắc Quốc. Bây giờ ông ta sẽ không mắc sai lầm đó nữa.
+
+"Tung tất cả ra," ông ta ra lệnh.
+
+Trinh Sát, Kỵ Binh, Thiết Giáp — cùng một lúc, từ ba hướng, ào ạt như ba con sóng thần trắng xóa. Mặt đất rung chuyển. Phòng tuyến Hắc Quốc bắt đầu lung lay.
+
+Nhưng đêm trước trận chiến, một thợ rèn già run rẩy đến gặp Nữ hoàng, tay cầm một cuốn sách phù văn cổ đại: "Thưa Nữ hoàng, nếu chúng ta khắc thêm phù văn lên tháp... chúng có thể mạnh gấp đôi, gấp ba."
+
+Nâng cấp tháp bằng cách nhấp chuột phải — đây là bí mật làm thay đổi cục diện.
+
+⚔️ Mở khóa Nâng Cấp Tháp (Chuột Phải) — phù văn cổ đại tăng sức mạnh tháp phòng thủ.""",
+    5: """🌑 CỬA ẢI 5 — BÓNG TỐI TRONG BÓNG TỐI
+
+Chúng không đến từ phía trước. Chúng xuất hiện từ... không khí.
+
+Đó là khi lính canh đầu tiên ngã xuống mà không có một tiếng động nào. Rồi người thứ hai. Rồi cả một đội tuần tra. Phantom — Đặc Công Bóng Ma, được cấy chip tàng hình quang học tiên tiến nhất của Bạch Quốc — đã thâm nhập vào sâu trong phòng tuyến.
+
+Dán đầu vào bản đồ, Nữ hoàng Thanh Hoa cắn môi. Mắt thường không thể thấy chúng. Nỏ không thể ngắm chúng. Ngọn lửa không thể đốt cháy thứ không có hình dạng.
+
+Rồi, trong phòng thí nghiệm tối tăm, thầy phù thủy già nhất của tộc Đen — người đã sống qua trăm năm chiến tranh — ngẩng đầu lên với ánh mắt rực sáng: "Nếu ta bóp méo chính không-thời gian... chúng sẽ không thể chạy thoát."
+
+⚔️ Mở khóa Kronos — Trụ Trì Hoãn, làm chậm kẻ thù bằng sóng năng lượng tối.""",
+    6: """🌑 CỬA ẢI 6 — KẺ PHÁ THÀNH
+
+Tiếng gầm rú của búa plasma vang lên từ phía xa — thứ âm thanh mà lính canh trên tường thành không bao giờ quên cho đến hết đời. Một cái tháp quan sát sụp xuống. Rồi thêm một cái nữa.
+
+Ravager — Phá Thành Giả — không cần đường đi. Chúng chỉ đơn giản là đi thẳng vào, phá vỡ tất cả những gì chặn lại. Tháp phòng thủ của Hắc Quốc bị tấn công trực tiếp. Nếu không có tháp, không có phòng tuyến. Không có phòng tuyến, tất cả sẽ tàn.
+
+Nữ hoàng Thanh Hoa nhớ đến thiên thạch — tảng đá từ trời rơi xuống cách đây một trăm năm, được thợ rèn tổ tiên đúc thành Đại Bác Sấm Đen. Vũ khí đó chưa bao giờ được dùng. Cho đến hôm nay.
+
+Mỗi phát bắn tạo ra một tiếng sấm chấn động chiến trường. Ravager ngã xuống.
+
+⚔️ Mở khóa Ares — Đại Bác Sấm Đen, sát thương đơn mục tiêu cực cao.""",
+    7: """🌑 CỬA ẢI 7 — SONG LONG HỘI CHIẾN
+
+Vua NamDinh đã rút ra bài học đau đớn. Hắn không còn tấn công theo một loại quân nữa. Lần này, hắn phối hợp: Thiết Giáp Trắng dẫn đầu như tường thành sống, Phá Thành Giả đập nát phòng tuyến từ bên sườn, và Bóng Ma len lỏi vào mọi kẽ hở.
+
+Đây là cuộc tấn công phối hợp đầu tiên thực sự trong cuộc chiến. Và nó gần như thành công.
+
+Phòng tuyến Hắc Quốc lung lay dữ dội. Trong giờ phút nguy kịch nhất, thợ rèn cả cuộc đời nghiên cứu sách cổ của vua cha đã bước ra: "Phù văn tối thượng. Nâng cấp bậc 3. Không tháp nào trên thế giới này mạnh hơn."
+
+Đây không còn là cuộc chiến của số lượng nữa. Đây là cuộc chiến của trí tuệ.
+
+⚔️ Mở khóa Nâng Cấp Cấp 3 — phù văn tối thượng từ sách cổ vua cha để lại.""",
+    8: """🌑 CỬA ẢI 8 — CỖ MÁY TẬN THẾ
+
+Khi mặt đất bắt đầu rung chuyển theo từng bước đi của nó, tất cả mọi người đều im lặng. Không ai dám thở. Từ trong sương mù dày đặc, một bóng đen khổng lồ dần hiện ra...
+
+Titan. Cỗ Máy Diệt Chủng — vũ khí tối thượng mà vua NamDinh đích thân đặt hàng chế tạo từ khi còn là thái tử. Hắn đã chờ đợi khoảnh khắc này suốt ba mươi năm. Titan không có tim. Titan không biết đau. Titan không dừng lại.
+
+Nữ hoàng Thanh Hoa đứng lặng một hồi lâu, rồi thì thầm câu của cha: "Khi kẻ thù đưa núi đến, con hãy ném lại cho chúng cả ngọn núi lửa."
+
+Từ rìa phía Nam của Hắc Quốc, người ta bắt đầu vận chuyển dung nham từ ngọn núi lửa thánh — nguyên liệu để tạo ra Cối Đá Phún Thạch, vũ khí hủy diệt diện rộng.
+
+⚔️ Mở khóa Hephaestus — Cối Đá Phún Thạch, bắn đá nóng chảy diện rộng 3x3 ô.""",
+    9: """🌑 CỬA ẢI 9 — ĐÊM TỐI NHẤT
+
+Vòng ngoài phòng thủ đã vỡ. Các Titan đập nát tường thành. Trong lúc hỗn loạn, Bóng Ma len lỏi vào từng ngóc ngách của cung điện. Hắc Quốc đang chảy máu từ hàng trăm vết thương cùng một lúc.
+
+Những gương mặt quen thuộc đã ngã xuống. Lão tướng thủ thành bốn mươi năm. Cô thợ rèn trẻ vừa chế tạo xong tháp cuối cùng. Trưởng lão bộ lạc phía Đông.
+
+Nữ hoàng Thanh Hoa leo lên mảnh tường thành duy nhất còn đứng vững, nhìn xuống đám quân địch bao vây. Nước mắt không chảy ra — không phải vì nàng không đau, mà vì nàng không có thời gian để đau.
+
+"Cha ơi," nàng thì thầm, "con sẽ không để vương quốc này sụp đổ. Một người ngã xuống, vạn người đứng lên."
+
+Tiếng reo hò từ phía sau vang lên — người dân Hắc Quốc, già có trẻ có, cầm vũ khí thô sơ đứng sau lưng Nữ hoàng. Họ không có giáp. Nhưng họ có nhau.
+
+⚔️ Cầm cự bằng mọi giá — đây là đêm tối nhất trước bình minh.""",
+    10: """🌑 CỬA ẢI 10 — TRẬN CHIẾN CUỐI CÙNG
+
+Vua NamDinh đích thân ra trận. Lần đầu tiên trong lịch sử, ông ta rời khỏi ngai vàng để chứng kiến khoảnh khắc Hắc Quốc sụp đổ. Toàn bộ tinh binh Bạch Quốc — Titan, Ravager, Phantom, Brute — tất cả cùng tiến lên.
+
+"Hôm nay sẽ là ngày cuối cùng của tộc Đen," NamDinh tuyên bố.
+
+Nhưng ông ta không biết điều này: bảy thầy phù thủy già nhất của Hắc Quốc đã âm thầm làm việc suốt ba ngày ba đêm không ngủ, phù phép bởi máu và lời thề, hoàn thiện thứ bẫy cổ xưa nhất từ buổi khai thiên lập địa của tộc Đen — Bẫy Hố Tử Thần, hố sâu không đáy được ngụy trang bằng lá khô và phù chú. Một bước sai, cả một vùng đất sụp xuống.
+
+Nữ hoàng Thanh Hoa nhìn thẳng vào mắt kẻ thù, giọng không run: "Đây là đất của chúng ta. Và chúng ta sẽ bảo vệ nó — đến hơi thở cuối cùng."
+
+⚔️ Mở khóa Thanatos — Bẫy Hố Tử Thần, xóa sổ toàn bộ vùng 3x3 ô chỉ một lần."""
 }
 
 WAVES_BY_LEVEL = {
+    0: ["Lurker"] * 5,
     1: ["Lurker"] * 25,
     2: (["Lurker", "Lurker", "Drifter"] * 5) + ["Drifter"] * 5 + ["Lurker"] * 5,
     3: (["Drifter", "Brute"] * 8) + ["Drifter"] * 4,
@@ -103,6 +205,7 @@ WAVES_BY_LEVEL = {
 }
 
 OBSTACLES_BY_LEVEL = {
+    0: [],
     1: [(4, 10), (5, 10), (8, 10), (9, 10)], # Easy wall
     2: [(0, 8), (1, 8), (2, 8), (3, 8), (10, 12), (11, 12), (12, 12), (13, 12)], # Offset walls
     3: [(2, 5), (3, 5), (4, 5), (5, 5), (6, 5), (7, 5), (8, 15), (9, 15), (10, 15), (11, 15), (12, 15), (13, 15)], # Big stagger
@@ -114,6 +217,52 @@ OBSTACLES_BY_LEVEL = {
     9: [(2, 4), (2, 5), (2, 6), (11, 5), (11, 6), (11, 7), (6, 10), (7, 10), (2, 14), (2, 15), (11, 14), (11, 15), (6, 16), (7, 16)], # Heavy scattered rocks
     10: [(2, 3), (2, 4), (2, 5), (2, 6), (2, 7), (2, 8), (2, 9), (11, 18), (11, 17), (11, 16), (11, 15), (11, 14), (11, 13), (11, 12), (6, 4), (7, 4), (8, 4), (9, 4), (10, 4), (4, 17), (5, 17), (6, 17), (7, 17), (8, 17)] # Labyrinth extra
 }
+
+LEVEL_0_GUIDE_STEPS = [
+    {
+        "title": "Chào Mừng Nữ Hoàng",
+        "text": "Thưa Nữ Hoàng, chào mừng đến Khóa Huấn Luyện! Bạn sẽ học cách bảo vệ thành Hắc Quốc trước quân Bạch Quốc. Mỗi bước sẽ có hướng dẫn rõ ràng — khi đã hiểu, nhấn TIẾP THEO để sang bước kế tiếp.",
+    },
+    {
+        "title": "Lộ Trình Quái Vật",
+        "text": "Quái vật xuất hiện tại ô BẠCH MÔN (góc trên trái, màu sáng) và đi theo đường đến THÀNH (góc dưới phải, màu tím). Đặt tháp dọc đường đi để chặn và tiêu diệt chúng trước khi chúng vào thành.",
+        "highlight": "path",
+    },
+    {
+        "title": "Hệ Thống Tim",
+        "text": "Tim ❤️ là tiền dùng để mua và nâng cấp tháp. Tiêu diệt quái vật sẽ nhận thêm Tim. Trong khóa huấn luyện, bạn có vô hạn Tim — hãy thử nghiệm thoải mái!",
+        "highlight": "gold",
+    },
+    {
+        "title": "Chọn Tháp Ballista",
+        "text": "Nhìn danh sách VŨ KHÍ bên phải màn hình, nhấp vào tháp Ballista để chọn. Khi thấy dấu ✓ trên thẻ tháp, nhấn TIẾP THEO.",
+        "require": "tower_selected",
+        "highlight": "sidebar",
+    },
+    {
+        "title": "Đặt 3 Tháp",
+        "text": "Nhấp vào 3 ô trống trên bản đồ để đặt tháp (không được chặn đường quái — nếu bị báo \"BỊT ĐƯỜNG\" hãy chọn ô khác). Sau khi đặt đủ 3 tháp, nhấn TIẾP THEO.",
+        "require": "towers_placed_3",
+        "highlight": "grid",
+    },
+    {
+        "title": "Xem Thông Tin Tháp",
+        "text": "Nhấp chuột trái vào một tháp đã đặt trên bản đồ để xem thông tin (sát thương, tầm bắn, giá nâng cấp). Đóng cửa sổ thông tin, rồi nhấn TIẾP THEO.",
+        "require": "tower_inspected",
+        "highlight": "tower",
+    },
+    {
+        "title": "Bắt Đầu Sóng",
+        "text": "Nhấn nút BẮT ĐẦU SÓNG ở góc dưới trái bản đồ để gọi quái vật. Khi sóng đã bắt đầu, nhấn TIẾP THEO.",
+        "require": "wave_started",
+        "highlight": "wave_btn",
+    },
+    {
+        "title": "Tiêu Diệt Quái Vật",
+        "text": "Quan sát tháp tấn công quái vật! Mỗi quái bị tiêu diệt sẽ cho bạn Tim. Khi hết sóng, khóa huấn luyện tự hoàn thành.",
+        "require": "wave_complete",
+    },
+]
 
 FINAL_STORY_TEXTS = [
     "Sau nhiều lần tấn công thất bại dồn dập, vua NamDinh đã phải gánh chịu làn sóng phản đối vô cùng mạnh mẽ từ chính người dân Bạch Quốc. Cuộc chiến vô nghĩa kéo dài chỉ mang lại nỗi đau thương cùng cực cho cả hai bên.",
@@ -539,8 +688,22 @@ class GameEngine:
 
         if self.has_cv2:
             import cv2
-            if os.path.exists("assets/video/logo.mp4"): self.logo_cap = cv2.VideoCapture("assets/video/logo.mp4")
-            if os.path.exists("assets/video/intro.mp4"): self.intro_cap = cv2.VideoCapture("assets/video/intro.mp4")
+            _logo_exists = os.path.exists("assets/video/logo.mp4")
+            _intro_exists = os.path.exists("assets/video/intro.mp4")
+            print(f"[LOG] video files check: logo.mp4={_logo_exists}, intro.mp4={_intro_exists}", flush=True)
+            if _logo_exists: self.logo_cap = cv2.VideoCapture("assets/video/logo.mp4")
+            if _intro_exists: self.intro_cap = cv2.VideoCapture("assets/video/intro.mp4")
+            if self.logo_cap and self.logo_cap.isOpened():
+                _w = int(self.logo_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                _h = int(self.logo_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                _fps = self.logo_cap.get(cv2.CAP_PROP_FPS)
+                print(f"[LOG] logo_cap opened: {_w}x{_h} @ {_fps} fps", flush=True)
+            else:
+                print(f"[LOG] logo_cap FAILED to open", flush=True)
+            if self.intro_cap and self.intro_cap.isOpened():
+                _w = int(self.intro_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                _h = int(self.intro_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                print(f"[LOG] intro_cap opened: {_w}x{_h}", flush=True)
 
         self.delay_timer = 60  # Đợi 2 giây (60 frames) trước khi chiếu logo
         if self.logo_cap and self.logo_cap.isOpened():
@@ -592,6 +755,7 @@ class GameEngine:
             self.get_poster(name)
             
         self.show_guide_popup = False
+        self.guide_popup_page = 0
 
         # Load outro background
         try:
@@ -663,7 +827,7 @@ class GameEngine:
         except:
             self.click_sfx = None
         self.current_level = 1
-        self.unlocked_level, self.has_selected_faction, self.has_seen_intro, self.has_beaten_game = load_progress()
+        self.unlocked_level, self.has_selected_faction, self.has_seen_intro, self.has_beaten_game, self.has_seen_tutorial = load_progress()
         self.ending_unlocked_by_code = False
         self.settings_prompt_password = False
         self.setting_password_input = ""
@@ -707,8 +871,9 @@ class GameEngine:
         self.monsters = LinkedList()
         self.towers = []
         self.base = Base(BASE_POS, max_hp=20)
-        self.gold = 100 + (level - 1) * 30
+        self.gold = 999999 if level == 0 else (100 + (level - 1) * 30)
         self.current_level = level
+        self.is_level_0 = (level == 0)
         self.wave_queue = Queue()
         self.spawn_timer = 0.0
         self.wave_active = False
@@ -733,7 +898,14 @@ class GameEngine:
                     SPAWN_POS[0] * CELL_SIZE + CELL_SIZE // 2
                 ]
                 m_obj.grid_ref = self.grid
-                
+
+                # Level 0: Fixed path (no scatter)
+                if getattr(self, 'is_level_0', False):
+                    m_obj.path = bfs_find_path(self.grid, SPAWN_POS, BASE_POS)
+                    m_obj.path_index = 0
+                    self.monsters.append(m_obj)
+                    return
+
                 # Scatter logic: stronger monsters wander more waypoints before pathing
                 # Scatter count by type: Lurker=2, Drifter=2, Brute=3, Phantom=4, Ravager=5, Titan=6
                 _scatter_counts = {'Lurker':2,'Drifter':2,'Brute':3,'Phantom':4,'Ravager':5,'Titan':6}
@@ -897,8 +1069,19 @@ class GameEngine:
             if is_last:
                 if not getattr(self, 'has_seen_intro', False):
                     self.has_seen_intro = True
-                    save_progress(self.unlocked_level, getattr(self, 'has_selected_faction', False), self.has_seen_intro, getattr(self, 'has_beaten_game', False))
-                self.state = "LEVEL_SELECT" if not getattr(self, 'intro_from_settings', False) else "SETTINGS"
+                    save_progress(self.unlocked_level, getattr(self, 'has_selected_faction', False), self.has_seen_intro, getattr(self, 'has_seen_tutorial', False), getattr(self, 'has_beaten_game', False))
+                if not getattr(self, 'intro_from_settings', False):
+                    if not getattr(self, 'has_seen_tutorial', False):
+                        self.level_0_tutorial_active = True
+                        self.level_0_step = 0
+                        self.from_tutorial_practice = False
+                        self._init_level_0_tutorial_state()
+                        self.reset_game(0)
+                        self.state = "GAME"
+                    else:
+                        self.state = "LEVEL_SELECT"
+                else:
+                    self.state = "SETTINGS"
             else:
                 self.intro_story_index += 1
             pygame.time.delay(200)
@@ -1086,7 +1269,7 @@ class GameEngine:
             if is_hover_b:
                 self.play_click()
                 self.has_selected_faction = True
-                save_progress(self.unlocked_level, self.has_selected_faction, getattr(self, 'has_seen_intro', False), getattr(self, 'has_beaten_game', False))
+                save_progress(self.unlocked_level, self.has_selected_faction, getattr(self, 'has_seen_intro', False), getattr(self, 'has_seen_tutorial', False), getattr(self, 'has_beaten_game', False))
                 if not getattr(self, 'has_seen_intro', False):
                     self.intro_story_index = 0
                     self.intro_from_settings = False
@@ -1181,6 +1364,7 @@ class GameEngine:
             (pygame.Rect(SCREEN_W//2-190, 361, 380, 44), "XEM OUTRO" if is_ending_unlocked else "XEM OUTRO (KHOÁ)", (180,50,120) if is_ending_unlocked else (100,100,100), "OUTRO_REPLAY"),
             (pygame.Rect(SCREEN_W//2-190, 415, 380, 44), "MỞ KHÓA TẤT CẢ MÀN" if is_ending_unlocked else "MỞ KHÓA TẤT CẢ MÀN (KHOÁ)", (190,140,40) if is_ending_unlocked else (100,100,100), "UNLOCK_ALL"),
             (pygame.Rect(SCREEN_W//2-190, 469, 380, 44), "HƯỚNG DẪN CHƠI", (0,150,180), "GUIDE"),
+            (pygame.Rect(SCREEN_W//2-190, 523, 380, 44), "THỰC HÀNH HƯỚNG DẪN", (0,200,120), "TUTORIAL_PRACTICE"),
         ]
         
         for rect, label, c, action in btns:
@@ -1224,7 +1408,7 @@ class GameEngine:
                     self.has_seen_intro = False
                     self.has_beaten_game = False
                     self.ending_unlocked_by_code = False
-                    save_progress(self.unlocked_level, self.has_selected_faction, self.has_seen_intro, False)
+                    save_progress(self.unlocked_level, self.has_selected_faction, self.has_seen_intro, getattr(self, 'has_seen_tutorial', False), False)
                     self.state = "MENU"
                 elif action == "ENDING":
                     if is_ending_unlocked:
@@ -1248,14 +1432,22 @@ class GameEngine:
                 elif action == "UNLOCK_ALL":
                     if is_ending_unlocked:
                         self.unlocked_level = 10
-                        save_progress(10, self.has_selected_faction, self.has_seen_intro, self.has_beaten_game)
+                        save_progress(10, self.has_selected_faction, self.has_seen_intro, getattr(self, 'has_seen_tutorial', False), self.has_beaten_game)
                         self.warning_text = "Đã mở khóa toàn bộ 10 màn chơi!"
                         self.warning_timer = 180
                     else:
                         self.settings_prompt_password = True
                         self.setting_password_input = ""
                 elif action == "GUIDE":
+                    self.guide_popup_page = 0
                     self.show_guide_popup = True
+                elif action == "TUTORIAL_PRACTICE":
+                    self.level_0_tutorial_active = True
+                    self.level_0_step = 0
+                    self.from_tutorial_practice = True
+                    self._init_level_0_tutorial_state()
+                    self.reset_game(0)
+                    self.state = "GAME"
                 pygame.time.delay(200)
                 
         # --- Back button in Settings ---
@@ -1273,12 +1465,12 @@ class GameEngine:
         # Draw lock note if ending/outro/all levels are locked
         if not is_ending_unlocked:
             lbl_note = self.fonts['sm'].render("(*) Người chơi phá đảo game để truy cập tính năng này", True, (220, 120, 120))
-            self.screen.blit(lbl_note, (SCREEN_W//2 - lbl_note.get_width()//2, 525))
+            self.screen.blit(lbl_note, (SCREEN_W//2 - lbl_note.get_width()//2, 575))
 
         # Warning/Info Text display
         if getattr(self, 'warning_timer', 0) > 0:
             warn = self.fonts['md'].render(getattr(self, 'warning_text', ''), True, (255, 100, 100))
-            self.screen.blit(warn, (SCREEN_W//2 - warn.get_width()//2, 555))
+            self.screen.blit(warn, (SCREEN_W//2 - warn.get_width()//2, 525))
             self.warning_timer -= 1
 
         # Render Password Input Popup
@@ -1313,48 +1505,9 @@ class GameEngine:
             lbl_hint = self.fonts['xs'].render("Ấn ENTER để xác nhận | ESC để hủy", True, (130, 130, 150))
             self.screen.blit(lbl_hint, (SCREEN_W//2 - lbl_hint.get_width()//2, box_rect.y + 205))
 
-        # Draw lock note if ending/outro/all levels are locked
-        if not is_ending_unlocked:
-            lbl_note = self.fonts['sm'].render("(*) Người chơi phá đảo game để truy cập tính năng này", True, (220, 120, 120))
-            self.screen.blit(lbl_note, (SCREEN_W//2 - lbl_note.get_width()//2, 525))
-
-        # Warning/Info Text display
-        if getattr(self, 'warning_timer', 0) > 0:
-            warn = self.fonts['md'].render(getattr(self, 'warning_text', ''), True, (255, 100, 100))
-            self.screen.blit(warn, (SCREEN_W//2 - warn.get_width()//2, 555))
-            self.warning_timer -= 1
-
-        # Render Password Input Popup
-        if is_popup_active:
-            overlay = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
-            overlay.fill((10, 12, 18, 220))
-            self.screen.blit(overlay, (0,0))
-            
-            box_w, box_h = 500, 250
-            box_rect = pygame.Rect(SCREEN_W//2 - box_w//2, SCREEN_H//2 - box_h//2, box_w, box_h)
-            pygame.draw.rect(self.screen, (22, 25, 35), box_rect, border_radius=12)
-            pygame.draw.rect(self.screen, (150, 50, 150), box_rect, width=3, border_radius=12)
-            
-            lbl_title = self.fonts['lg'].render("CẦN PHÁ ĐẢO HOẶC MẬT MÃ", True, (255, 255, 255))
-            self.screen.blit(lbl_title, (SCREEN_W//2 - lbl_title.get_width()//2, box_rect.y + 20))
-            
-            lbl_sub = self.fonts['md'].render("Nhập mã nhà phát triển để mở khóa:", True, (180, 180, 200))
-            self.screen.blit(lbl_sub, (SCREEN_W//2 - lbl_sub.get_width()//2, box_rect.y + 60))
-            
-            input_box = pygame.Rect(SCREEN_W//2 - 150, box_rect.y + 100, 300, 45)
-            pygame.draw.rect(self.screen, (15, 18, 25), input_box, border_radius=8)
-            pygame.draw.rect(self.screen, (200, 180, 50), input_box, width=2, border_radius=8)
-            
-            bullet_str = "*" * len(self.setting_password_input) if self.setting_password_input else "Nhập số..."
-            bullet_color = (255, 255, 50) if self.setting_password_input else (100, 100, 110)
-            lbl_pw = self.fonts['lg'].render(bullet_str, True, bullet_color)
-            self.screen.blit(lbl_pw, (SCREEN_W//2 - lbl_pw.get_width()//2, input_box.y + 4))
-            
-            lbl_note = self.fonts['xs'].render("Người chơi phá đảo game để truy cập tính năng này", True, (220, 120, 120))
-            self.screen.blit(lbl_note, (SCREEN_W//2 - lbl_note.get_width()//2, box_rect.y + 160))
-            
-            lbl_hint = self.fonts['xs'].render("Ấn ENTER để xác nhận | ESC để hủy", True, (130, 130, 150))
-            self.screen.blit(lbl_hint, (SCREEN_W//2 - lbl_hint.get_width()//2, box_rect.y + 205))
+        # Draw tutorial overlay if active
+        if getattr(self, 'tutorial_active', False):
+            self.draw_tutorial_overlay()
 
     # ---------------------------------------------------------------- MENU
     
@@ -1429,110 +1582,181 @@ class GameEngine:
                 self.state = "MENU"
                 self.start_menu_music()
 
-    def draw_guide_popup(self):
-        if not getattr(self, 'show_guide_popup', False):
-            return
-            
-        mx, my = pygame.mouse.get_pos()
-        click = pygame.mouse.get_pressed()[0]
-        
-        # 1. Dark background overlay
-        overlay = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 195))
-        self.screen.blit(overlay, (0, 0))
-        
-        # 2. Main Dialog Box
-        dialog_w, dialog_h = 780, 520
-        dialog_x = SCREEN_W // 2 - dialog_w // 2
-        dialog_y = SCREEN_H // 2 - dialog_h // 2
-        
-        dialog_rect = pygame.Rect(dialog_x, dialog_y, dialog_w, dialog_h)
-        # Draw translucent glassmorphic backdrop
-        pygame.draw.rect(self.screen, (22, 25, 35), dialog_rect, border_radius=15)
-        pygame.draw.rect(self.screen, (0, 230, 255), dialog_rect, width=2, border_radius=15)
-        
-        # Title
-        title_lbl = self.fonts['lg'].render("HƯỚNG DẪN CHƠI CƠ BẢN", True, (0, 230, 255))
-        self.screen.blit(title_lbl, (SCREEN_W//2 - title_lbl.get_width()//2, dialog_y + 15))
-        
-        # Line dividers
-        pygame.draw.line(self.screen, (80, 80, 110), (dialog_x + 30, dialog_y + 55), (dialog_x + dialog_w - 30, dialog_y + 55), 1)
-        
-        # Draw vertical divider line in the middle
-        pygame.draw.line(self.screen, (60, 60, 80), (SCREEN_W // 2, dialog_y + 70), (SCREEN_W // 2, dialog_y + dialog_h - 70), 1)
-        
-        col1_x = dialog_x + 30
-        col2_x = SCREEN_W // 2 + 25
-        col_w = 330
-        
-        left_items = [
-            ("⚡ ĐẶT THÁP PHÒNG THỦ", "Chọn tháp từ danh sách ở chân màn hình, rồi click vào ô đất trống trên bản đồ để xây dựng.", (0, 230, 255)),
-            ("❤️ TIỀN TỆ (TIM CRYSTAL)", "Tim dùng để mua/nâng cấp tháp. Tiêu diệt quái vật để thu thập thêm Tim.", (255, 100, 100)),
-            ("🧠 PATHFINDING ĐƯỜNG ĐI", "Quái vật tự tìm đường ngắn nhất bằng BFS. Bạn không thể đặt tháp chặn hoàn toàn đường đi.", (100, 255, 100)),
-            ("⬆️ NÂNG CẤP / BÁN THÁP", "Click chuột vào tháp đã xây để mở bảng menu tùy chọn Nâng cấp (tăng chỉ số) hoặc Bán tháp.", (255, 200, 50)),
-            ("🏹 VÒNG TRÒN TẦM BẮN", "Rà chuột lên tháp để hiển thị vòng tầm bắn chuột. Tháp tự động bắn quái thông minh.", (180, 150, 255))
-        ]
-        
-        right_items = [
-            ("🏹 BALLISTA (THÁP TÊN)", "Sát thương đơn mục tiêu ổn định, tầm bắn trung bình, chi phí nâng cấp cực rẻ.", (240, 240, 240)),
-            ("🔥 IGNIS (THÁP LỬA)", "Phun lửa gây sát thương diện rộng (AOE) cực mạnh lên nhóm quái đi sát nhau.", (255, 120, 50)),
-            ("🗡️ ARES (THÁP KIẾM)", "Gây lượng sát thương vật lý khổng lồ, tầm siêu xa nhưng tốc độ bắn rất chậm.", (200, 80, 255)),
-            ("💎 HEPHAESTUS (THÁP ĐẬP)", "Đặc biệt! Tăng đáng kể lượng Tim nhận được khi tiêu diệt quái vật gần tháp.", (255, 215, 0))
-        ]
-        
-        def draw_wrapped_item(x, y, title, desc, title_color):
-            # Render title
-            lbl_title = self.fonts['sm'].render(title, True, title_color)
-            self.screen.blit(lbl_title, (x, y))
-            curr_y = y + 20
-            
-            # Wrap description text to col_w
-            words = desc.split(' ')
-            lines = []
-            current_line = []
-            for word in words:
-                current_line.append(word)
-                test_line = ' '.join(current_line)
-                if self.fonts['xs'].size(test_line)[0] > col_w:
+    def _wrap_text_lines(self, text, font_key, max_width):
+        words = text.split(' ')
+        lines = []
+        current_line = []
+        for word in words:
+            current_line.append(word)
+            test_line = ' '.join(current_line)
+            if self.fonts[font_key].size(test_line)[0] > max_width:
+                if len(current_line) > 1:
                     current_line.pop()
                     lines.append(' '.join(current_line))
                     current_line = [word]
-            if current_line:
-                lines.append(' '.join(current_line))
-                
-            # Draw wrapped lines
-            for line in lines:
-                lbl_line = self.fonts['xs'].render(line, True, (190, 190, 200))
-                self.screen.blit(lbl_line, (x + 8, curr_y))
-                curr_y += 16
-            return curr_y
-            
-        # Draw Left Column
-        y1 = dialog_y + 70
-        for title, desc, color in left_items:
-            y1 = draw_wrapped_item(col1_x, y1, title, desc, color) + 12
-            
-        # Draw Right Column
-        y2 = dialog_y + 70
-        lbl_col2_title = self.fonts['md'].render("📌 HỆ THỐNG THÁP PHÒNG THỦ", True, (255, 215, 0))
-        self.screen.blit(lbl_col2_title, (col2_x, y2))
-        y2 += 30
-        
-        for title, desc, color in right_items:
-            y2 = draw_wrapped_item(col2_x, y2, title, desc, color) + 12
-            
-        # Close Button
-        close_btn = pygame.Rect(SCREEN_W//2 - 60, dialog_y + dialog_h - 52, 120, 34)
-        is_hover = close_btn.collidepoint(mx, my)
-        pygame.draw.rect(self.screen, (0, 160, 200) if is_hover else (0, 120, 150), close_btn, border_radius=8)
-        pygame.draw.rect(self.screen, (0, 230, 255) if is_hover else (0, 180, 210), close_btn, width=1, border_radius=8)
-        lbl_c = self.fonts['md'].render("ĐÓNG", True, (255, 255, 255))
-        self.screen.blit(lbl_c, (close_btn.x + close_btn.w//2 - lbl_c.get_width()//2, close_btn.y + 6))
-        
-        if click and is_hover:
-            self.play_click()
-            self.show_guide_popup = False
-            pygame.time.delay(200)
+                else:
+                    lines.append(word)
+                    current_line = []
+        if current_line:
+            lines.append(' '.join(current_line))
+        return lines
+
+    def draw_guide_popup(self):
+        if not getattr(self, 'show_guide_popup', False):
+            return
+
+        guide_pages = [
+            {
+                "tab": "Cơ chế",
+                "title": "Cơ Chế Cốt Lõi",
+                "items": [
+                    ("Xây tháp", "Chọn tháp ở cột VŨ KHÍ bên phải, rồi click ô trống trên bản đồ. Tháp tự tấn công quái trong tầm.", (0, 230, 255)),
+                    ("Tim ❤️", "Tiền dùng mua và nâng cấp tháp. Nhận thêm Tim khi tiêu diệt quái Bạch Quốc.", (255, 90, 120)),
+                    ("Đường đi (BFS)", "Quái luôn tìm đường ngắn nhất tới Thành. Không được chặn kín mọi lối đi.", (100, 255, 120)),
+                    ("Nâng cấp", "Chuột phải vào tháp đã xây để nâng cấp (tăng sát thương).", (255, 200, 60)),
+                ],
+            },
+            {
+                "tab": "Tháp",
+                "title": "Hệ Thống Tháp",
+                "items": [
+                    ("Ballista", "Bắn đơn mục tiêu liên tục. Rẻ, ổn định cho đầu game.", (200, 220, 240)),
+                    ("Ignis", "Sát thương diện rộng (AoE). Mạnh khi quái đi thành đám.", (255, 130, 50)),
+                    ("Ares", "Sát thương đơn cực cao, tầm xa nhưng bắn chậm.", (200, 100, 255)),
+                    ("Hephaestus", "Không tấn công. Tăng Tim nhận được khi quái chết gần đó.", (255, 215, 0)),
+                ],
+            },
+            {
+                "tab": "Điều khiển",
+                "title": "Phím & Mẹo",
+                "items": [
+                    ("Xem thông tin", "Click chuột trái vào tháp hoặc quái để mở bảng thông tin chi tiết.", (180, 200, 255)),
+                    ("Bắt đầu sóng", "Vào trận từ màn Story, nhấn VÀO TRẬN để quái xuất hiện.", (100, 220, 180)),
+                    ("Tạm dừng", "Nhấn ESC để mở menu Pause. Nhấn R để chơi lại màn.", (150, 180, 220)),
+                    ("Khóa huấn luyện", "Lần đầu chơi sẽ có Khóa Huấn Luyện. Có thể luyện lại trong Cài đặt.", (255, 220, 100)),
+                ],
+            },
+        ]
+
+        mx, my = pygame.mouse.get_pos()
+        click = pygame.mouse.get_pressed()[0]
+        page = max(0, min(getattr(self, 'guide_popup_page', 0), len(guide_pages) - 1))
+        self.guide_popup_page = page
+
+        overlay = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
+        overlay.fill((5, 8, 15, 220))
+        self.screen.blit(overlay, (0, 0))
+
+        margin = 36
+        dialog_w = SCREEN_W - margin * 2
+        dialog_h = SCREEN_H - margin * 2
+        dialog_x = margin
+        dialog_y = margin
+        dialog_rect = pygame.Rect(dialog_x, dialog_y, dialog_w, dialog_h)
+
+        pygame.draw.rect(self.screen, (18, 22, 30), dialog_rect, border_radius=16)
+        pygame.draw.rect(self.screen, (0, 210, 255), dialog_rect, width=2, border_radius=16)
+
+        header_h = 56
+        pygame.draw.rect(self.screen, (25, 30, 42), (dialog_x, dialog_y, dialog_w, header_h), border_top_left_radius=16, border_top_right_radius=16)
+        pygame.draw.line(self.screen, (0, 180, 220), (dialog_x, dialog_y + header_h), (dialog_x + dialog_w, dialog_y + header_h), 2)
+
+        title_lbl = self.fonts['lg'].render("HƯỚNG DẪN CHƠI", True, (255, 255, 255))
+        self.screen.blit(title_lbl, (dialog_x + 24, dialog_y + 14))
+
+        page_lbl = self.fonts['sm'].render(f"Trang {page + 1}/{len(guide_pages)}", True, (150, 180, 200))
+        self.screen.blit(page_lbl, (dialog_x + dialog_w - page_lbl.get_width() - 24, dialog_y + 20))
+
+        tab_y = dialog_y + header_h + 10
+        tab_w = 130
+        tab_h = 34
+        for i, pg in enumerate(guide_pages):
+            tab_rect = pygame.Rect(dialog_x + 20 + i * (tab_w + 8), tab_y, tab_w, tab_h)
+            is_active = (i == page)
+            is_hover_tab = tab_rect.collidepoint(mx, my)
+            tab_bg = (0, 120, 160) if is_active else ((40, 70, 90) if is_hover_tab else (30, 38, 52))
+            pygame.draw.rect(self.screen, tab_bg, tab_rect, border_radius=8)
+            pygame.draw.rect(self.screen, (0, 210, 255) if is_active else (70, 90, 110), tab_rect, width=1, border_radius=8)
+            tab_lbl = self.fonts['sm'].render(pg["tab"], True, (255, 255, 255) if is_active else (170, 180, 195))
+            self.screen.blit(tab_lbl, (tab_rect.x + tab_rect.w // 2 - tab_lbl.get_width() // 2, tab_rect.y + 8))
+            if click and is_hover_tab:
+                self.play_click()
+                self.guide_popup_page = i
+                pygame.time.delay(120)
+                return
+
+        content_y = tab_y + tab_h + 16
+        content_bottom = dialog_y + dialog_h - 72
+        content_h = content_bottom - content_y
+
+        page_data = guide_pages[page]
+        sect_title = self.fonts['md'].render(page_data["title"], True, (0, 210, 255))
+        self.screen.blit(sect_title, (dialog_x + 24, content_y))
+
+        card_x = dialog_x + 24
+        card_w = dialog_w - 48
+        card_y = content_y + 34
+        card_gap = 10
+        n_items = len(page_data["items"])
+        card_h = max(72, (content_h - 34 - card_gap * (n_items - 1)) // n_items)
+
+        for title, desc, color in page_data["items"]:
+            card_rect = pygame.Rect(card_x, card_y, card_w, card_h)
+            pygame.draw.rect(self.screen, (28, 32, 44), card_rect, border_radius=10)
+            pygame.draw.rect(self.screen, color, (card_x, card_y, 5, card_h), border_radius=10)
+
+            title_lines = self._wrap_text_lines(title, 'md', card_w - 24)
+            desc_lines = self._wrap_text_lines(desc, 'sm', card_w - 24)
+
+            ty = card_y + 10
+            for line in title_lines[:1]:
+                t_surf = self.fonts['md'].render(line, True, color)
+                self.screen.blit(t_surf, (card_x + 14, ty))
+                ty += t_surf.get_height() + 4
+
+            line_h = 19
+            max_desc_lines = max(1, (card_h - (ty - card_y) - 10) // line_h)
+            for line in desc_lines[:max_desc_lines]:
+                d_surf = self.fonts['sm'].render(line, True, (185, 195, 210))
+                self.screen.blit(d_surf, (card_x + 14, ty))
+                ty += line_h
+            if len(desc_lines) > max_desc_lines:
+                more = self.fonts['xs'].render("...", True, (120, 130, 150))
+                self.screen.blit(more, (card_x + 14, card_y + card_h - 18))
+
+            card_y += card_h + card_gap
+
+        footer_y = dialog_y + dialog_h - 56
+        prev_btn = pygame.Rect(dialog_x + 24, footer_y, 110, 40)
+        next_btn = pygame.Rect(dialog_x + 144, footer_y, 110, 40)
+        close_btn = pygame.Rect(dialog_x + dialog_w - 164, footer_y, 140, 40)
+
+        for btn, label, enabled in [
+            (prev_btn, "◀ TRƯỚC", page > 0),
+            (next_btn, "SAU ▶", page < len(guide_pages) - 1),
+            (close_btn, "ĐÓNG", True),
+        ]:
+            is_hover = btn.collidepoint(mx, my) and enabled
+            bg = (50, 120, 70) if is_hover else ((35, 45, 60) if enabled else (28, 30, 38))
+            border = (100, 220, 130) if is_hover else ((70, 90, 110) if enabled else (50, 55, 65))
+            pygame.draw.rect(self.screen, bg, btn, border_radius=10)
+            pygame.draw.rect(self.screen, border, btn, width=2, border_radius=10)
+            lbl = self.fonts['sm'].render(label, True, (255, 255, 255) if enabled else (100, 105, 115))
+            self.screen.blit(lbl, (btn.x + btn.w // 2 - lbl.get_width() // 2, btn.y + 11))
+
+        if click:
+            if prev_btn.collidepoint(mx, my) and page > 0:
+                self.play_click()
+                self.guide_popup_page = page - 1
+                pygame.time.delay(120)
+            elif next_btn.collidepoint(mx, my) and page < len(guide_pages) - 1:
+                self.play_click()
+                self.guide_popup_page = page + 1
+                pygame.time.delay(120)
+            elif close_btn.collidepoint(mx, my):
+                self.play_click()
+                self.show_guide_popup = False
+                pygame.time.delay(120)
 
     def draw_menu(self):
         if getattr(self, 'menu_anim_y', 0) > 0:
@@ -1560,7 +1784,25 @@ class GameEngine:
         
         # Dời dòng chữ bản quyền xuống góc dưới bên phải, size nhỏ
         sub = self.fonts['xs'].render("Hắc Quốc Thủ Thành — DSA Project @UIT 2026", True, (100, 110, 120))
-        self.screen.blit(sub, (SCREEN_W - sub.get_width() - 10, SCREEN_H - sub.get_height() - 10))
+        sub_x = SCREEN_W - sub.get_width() - 10
+        sub_y = SCREEN_H - sub.get_height() - 10
+        self.screen.blit(sub, (sub_x, sub_y))
+
+        # #region agent log
+        try:
+            import json as _json
+            with open("debug-8d36d7.log", "a") as _f:
+                _f.write(_json.dumps({
+                    "id": f"log_{__import__('time').time_ns()}",
+                    "timestamp": __import__('time').time_ns() // 1_000_000,
+                    "location": "main.py:1774",
+                    "message": "menu_copyright_pos",
+                    "data": {"sub_x": sub_x, "sub_y": sub_y, "sub_w": sub.get_width(), "sub_h": sub.get_height(), "SCREEN_W": SCREEN_W, "SCREEN_H": SCREEN_H, "state": self.state},
+                    "runId": "pre-fix",
+                    "hypothesisId": "B"
+                }) + "\n")
+        except: pass
+        # #endregion
 
         mx, my = pygame.mouse.get_pos()
         click = pygame.mouse.get_pressed()[0]
@@ -1643,6 +1885,8 @@ class GameEngine:
             if is_hover:
                 glow_color = (80, 220, 100) if is_unlocked else (220, 60, 60)
                 draw_glow(self.screen, x, y, 65, glow_color)
+            elif i == 1 and is_unlocked and not getattr(self, 'has_seen_tutorial', False):
+                draw_glow(self.screen, x, y, 70, (255, 200, 60))
             
             # 2. Draw base background under the thumbnail
             pygame.draw.rect(self.screen, (20, 22, 30), draw_rect, border_radius=15)
@@ -1693,9 +1937,18 @@ class GameEngine:
                     draw_glow(self.screen, draw_rect.right - 12, draw_rect.y + 12, 16, (255, 215, 0))
                     self.screen.blit(star_lbl, (draw_rect.right - 22, draw_rect.y + 2))
             else:
-                # Elegant locked look
-                lbl = self.fonts['lg'].render("🔒", True, (240, 240, 240))
-                self.screen.blit(lbl, (x - lbl.get_width()//2, y - lbl.get_height()//2))
+                # Draw a proper lock icon using pygame shapes (emoji unreliable on Windows)
+                lk_cx, lk_cy = x, y
+                # Shackle (arc top part)
+                shackle_rect = pygame.Rect(lk_cx - 10, lk_cy - 22, 20, 20)
+                pygame.draw.arc(self.screen, (180, 180, 200), shackle_rect, 0, math.pi, 4)
+                # Lock body
+                body_rect = pygame.Rect(lk_cx - 14, lk_cy - 8, 28, 22)
+                pygame.draw.rect(self.screen, (90, 90, 110), body_rect, border_radius=4)
+                pygame.draw.rect(self.screen, (150, 150, 180), body_rect, width=2, border_radius=4)
+                # Keyhole
+                pygame.draw.circle(self.screen, (40, 40, 55), (lk_cx, lk_cy + 1), 4)
+                pygame.draw.rect(self.screen, (40, 40, 55), pygame.Rect(lk_cx - 2, lk_cy + 1, 4, 6))
             
             # Handle level selection click
             if click and is_hover:
@@ -1704,13 +1957,22 @@ class GameEngine:
                     self.screen.fill((255,255,255))
                     pygame.display.flip()
                     pygame.time.delay(100)
-                    self.reset_game(i)
-                    self.state = "STORY"
-                    pygame.time.delay(200)
+                    # Start tutorial (Level 0) for first playthrough
+                    if i == 1 and not getattr(self, 'has_seen_tutorial', False):
+                        self.level_0_tutorial_active = True
+                        self.level_0_step = 0
+                        self.from_tutorial_practice = False
+                        self._init_level_0_tutorial_state()
+                        self.reset_game(0)
+                        self.state = "GAME"
+                    else:
+                        # Normal level start (story then game)
+                        self.reset_game(i)
+                        self.state = "STORY"
+                        pygame.time.delay(200)
                 else:
                     self.warning_text = "Vui lòng hoàn thành màn chơi trước đó!"
                     self.warning_timer = 120
-                    
         if getattr(self, 'warning_timer', 0) > 0:
             warn = self.fonts['lg'].render(self.warning_text, True, (255, 50, 50))
             # Text shadow for warning message
@@ -1738,8 +2000,17 @@ class GameEngine:
         self.screen.blit(lbl_g, (guide_btn.x + guide_btn.w//2 - lbl_g.get_width()//2, guide_btn.y + 8))
         if click and is_guide_hover:
             self.play_click()
+            self.guide_popup_page = 0
             self.show_guide_popup = True
             pygame.time.delay(200)
+
+        if not getattr(self, 'has_seen_tutorial', False):
+            hint = self.fonts['sm'].render("★ Level 1: Bắt đầu Khóa Huấn Luyện", True, (255, 220, 80))
+            pulse = int(180 + 75 * abs(math.sin(pygame.time.get_ticks() / 400)))
+            hint_bg = pygame.Rect(SCREEN_W // 2 - hint.get_width() // 2 - 16, 68, hint.get_width() + 32, 32)
+            pygame.draw.rect(self.screen, (40, 35, 20, pulse), hint_bg, border_radius=8)
+            pygame.draw.rect(self.screen, (255, 200, 60), hint_bg, width=2, border_radius=8)
+            self.screen.blit(hint, (SCREEN_W // 2 - hint.get_width() // 2, 74))
 
     # --------------------------------------------------------------- STORY
     def get_new_elements_for_level(self, level):
@@ -1786,16 +2057,46 @@ class GameEngine:
         title_l = self.fonts['lg'].render("TIỂU THUYẾT CHIẾN TRẬN", True, (255, 215, 0))
         self.screen.blit(title_l, (left_rect.x + 25, left_rect.y + 20))
         
-        # Left aligned lore text with wrapping
+        # Left aligned lore text with wrapping — handle \n paragraph breaks
         story = CAMPAIGN_STORY.get(self.current_level, "Chuẩn bị chiến đấu!")
-        story_lines = wrap_text(story, self.fonts['md'], 490)
-        sy = left_rect.y + 70
-        for ln in story_lines:
-            s_lbl = self.fonts['md'].render(ln, True, (240, 245, 255))
-            shadow = self.fonts['md'].render(ln, True, (0, 0, 0))
-            self.screen.blit(shadow, (left_rect.x + 26, sy + 1))
-            self.screen.blit(s_lbl, (left_rect.x + 25, sy))
-            sy += 26
+        # Split into paragraphs preserving empty lines as spacers
+        paragraphs = story.strip().split('\n')
+        # Build all display lines with metadata
+        all_lines = []  # list of (text_or_None, is_first_line)
+        first_line_added = False
+        for para in paragraphs:
+            para = para.strip()
+            if para == '':
+                all_lines.append((None, False))  # None = blank spacer
+            else:
+                wrapped = wrap_text(para, self.fonts['sm'], 502)
+                for i, wl in enumerate(wrapped):
+                    is_first = (not first_line_added) and (i == 0)
+                    all_lines.append((wl, is_first))
+                    first_line_added = True
+
+        # Clip drawing to inside the panel (with padding)
+        clip_rect = pygame.Rect(left_rect.x + 4, left_rect.y + 55, left_rect.w - 8, left_rect.h - 60)
+        self.screen.set_clip(clip_rect)
+
+        sy = left_rect.y + 58
+        line_h = 21
+        spacer_h = 7
+        for ln, is_first_line in all_lines:
+            if sy > left_rect.bottom - 10:
+                break
+            if ln is None:
+                sy += spacer_h
+            else:
+                color = (255, 215, 0) if is_first_line else (225, 235, 255)
+                fnt = self.fonts['md'] if is_first_line else self.fonts['sm']
+                shadow = fnt.render(ln, True, (0, 0, 0))
+                s_lbl = fnt.render(ln, True, color)
+                self.screen.blit(shadow, (left_rect.x + 16, sy + 1))
+                self.screen.blit(s_lbl, (left_rect.x + 15, sy))
+                sy += line_h + (4 if is_first_line else 0)
+
+        self.screen.set_clip(None)
 
         # ------------------------------------------------------------ RIGHT COLUMN: NEW ENTITIES
         right_rect = pygame.Rect(660, 110, 540, 430)
@@ -1828,9 +2129,14 @@ class GameEngine:
                 # Draw entity visual icon
                 self.draw_entity_icon(item, card_rect.x + 30, card_rect.y + 28)
                 
-                # Render Name
+                # Render Name — clipped to avoid overflow into detail button
                 name_color = (255, 180, 180) if item_type == "monster" else (180, 220, 255)
-                n_lbl = self.fonts['md'].render(info.get('name', item), True, name_color)
+                full_name = info.get('name', item)
+                # Try md font first, fall back to sm, then xs to fit
+                name_max_w = 275  # space before the detail button
+                n_lbl = self.fonts['sm'].render(full_name, True, name_color)
+                if n_lbl.get_width() > name_max_w:
+                    n_lbl = self.fonts['xs'].render(full_name, True, name_color)
                 self.screen.blit(n_lbl, (card_rect.x + 70, card_rect.y + 8))
                 
                 # Render Compact Stats
@@ -1968,7 +2274,25 @@ class GameEngine:
                 self.screen.blit(s2, (poster_rect.x + 150 - s2.get_width()//2, poster_rect.y + 160))
                 
             rx = px + 360
-            self.screen.blit(self.fonts['xl'].render(d['name'], True, (255, 220, 100)), (rx, 90))
+            # Render character name — use smaller font and wrap if too long to avoid overflow
+            name_text = d['name']
+            name_font = self.fonts['lg']  # Use lg (32px) instead of xl (48px) to prevent overflow
+            name_max_w = box_rect.w - 390 - 20  # available width
+            name_surf = name_font.render(name_text, True, (255, 220, 100))
+            if name_surf.get_width() > name_max_w:
+                # Try xs-medium font if still too wide
+                name_font = self.fonts['md']
+                name_surf = name_font.render(name_text, True, (255, 220, 100))
+            if name_surf.get_width() > name_max_w:
+                # Last resort: wrap onto two lines
+                wrapped = wrap_text(name_text, self.fonts['md'], name_max_w)
+                ny = 90
+                for wline in wrapped:
+                    ws = self.fonts['md'].render(wline, True, (255, 220, 100))
+                    self.screen.blit(ws, (rx, ny))
+                    ny += 26
+            else:
+                self.screen.blit(name_surf, (rx, 90))
             
             # ── Unlock level badge ───────────────────────────────────
             # Build tower_unlock_lv lookup: {tower_name: first level it appears}
@@ -2299,7 +2623,219 @@ class GameEngine:
             hint_lbl = self.fonts['xs'].render("Click ngoài để tiếp tục", True, (140, 160, 190))
             self.screen.blit(hint_lbl, (px+10, py+62))
 
+        if getattr(self, 'tutorial_active', False):
+            self.draw_tutorial_overlay()
 
+    def _init_level_0_tutorial_state(self):
+        self.level_0_towers_placed = 0
+        self.level_0_tower_inspected = False
+        self.level_0_next_btn = None
+        self.level_0_wave_btn = None
+
+    def _level_0_can_advance(self):
+        if not getattr(self, 'level_0_tutorial_active', False):
+            return False
+        step_idx = getattr(self, 'level_0_step', 0)
+        if step_idx >= len(LEVEL_0_GUIDE_STEPS):
+            return False
+        req = LEVEL_0_GUIDE_STEPS[step_idx].get("require")
+        if not req:
+            return True
+        if req == "tower_selected":
+            return getattr(self, 'dragged_tower_type', None) is not None
+        if req == "towers_placed_3":
+            return getattr(self, 'level_0_towers_placed', 0) >= 3
+        if req == "tower_inspected":
+            return getattr(self, 'level_0_tower_inspected', False)
+        if req == "wave_started":
+            return getattr(self, 'wave_active', False)
+        return False
+
+    def _level_0_blocks_input(self, input_type):
+        if not getattr(self, 'level_0_tutorial_active', False):
+            return False
+        step = getattr(self, 'level_0_step', 0)
+        if input_type == "sidebar":
+            return step != 3
+        if input_type == "place":
+            return step != 4 or getattr(self, 'level_0_towers_placed', 0) >= 3
+        if input_type == "inspect":
+            return step != 5
+        if input_type == "grid_other":
+            return step < 4 or step > 5
+        return False
+
+    def draw_level_0_tutorial(self):
+        if not getattr(self, 'level_0_tutorial_active', False):
+            return
+
+        step_idx = getattr(self, 'level_0_step', 0)
+        if step_idx >= len(LEVEL_0_GUIDE_STEPS):
+            return
+
+        step_data = LEVEL_0_GUIDE_STEPS[step_idx]
+        title = step_data.get("title", "")
+        text = step_data.get("text", "")
+        highlight = step_data.get("highlight", "")
+        req = step_data.get("require", "")
+
+        box_h = int(SCREEN_H * 0.32)
+        box_y = SCREEN_H - box_h
+        mx, my = pygame.mouse.get_pos()
+
+        overlay = pygame.Surface((SCREEN_W, box_h), pygame.SRCALPHA)
+        overlay.fill((10, 12, 20, 220))
+        self.screen.blit(overlay, (0, box_y))
+        pygame.draw.rect(self.screen, (0, 210, 255), (0, box_y, SCREEN_W, box_h), width=2)
+
+        title_bar_h = 50
+        pygame.draw.rect(self.screen, (20, 25, 40), (0, box_y, SCREEN_W, title_bar_h))
+        pygame.draw.line(self.screen, (0, 180, 220), (0, box_y + title_bar_h), (SCREEN_W, box_y + title_bar_h), 1)
+
+        title_lbl = self.fonts['lg'].render(title, True, (0, 210, 255))
+        self.screen.blit(title_lbl, (20, box_y + 12))
+
+        progress_text = f"Bước {step_idx + 1}/{len(LEVEL_0_GUIDE_STEPS)}"
+        prog_lbl = self.fonts['sm'].render(progress_text, True, (150, 200, 220))
+        self.screen.blit(prog_lbl, (SCREEN_W - prog_lbl.get_width() - 20, box_y + 16))
+
+        text_x, text_y = 20, box_y + title_bar_h + 12
+        text_w = SCREEN_W - 200
+
+        words = text.split(' ')
+        lines = []
+        current_line = []
+        for word in words:
+            current_line.append(word)
+            test_line = ' '.join(current_line)
+            if self.fonts['sm'].size(test_line)[0] > text_w:
+                if len(current_line) > 1:
+                    current_line.pop()
+                    lines.append(' '.join(current_line))
+                    current_line = [word]
+                else:
+                    lines.append(word)
+                    current_line = []
+        if current_line:
+            lines.append(' '.join(current_line))
+
+        for line in lines:
+            line_lbl = self.fonts['sm'].render(line, True, (200, 210, 220))
+            self.screen.blit(line_lbl, (text_x, text_y))
+            text_y += 22
+
+        if req == "towers_placed_3":
+            placed = getattr(self, 'level_0_towers_placed', 0)
+            status = self.fonts['md'].render(f"Đã đặt: {placed}/3 tháp", True, (100, 255, 150) if placed >= 3 else (255, 200, 100))
+            self.screen.blit(status, (text_x, text_y + 4))
+
+        if highlight == "path":
+            sx = SPAWN_POS[1] * CELL_SIZE
+            sy = SPAWN_POS[0] * CELL_SIZE
+            bx = BASE_POS[1] * CELL_SIZE
+            by = BASE_POS[0] * CELL_SIZE
+            pygame.draw.rect(self.screen, (255, 255, 100), (sx, sy, CELL_SIZE, CELL_SIZE), width=3)
+            pygame.draw.rect(self.screen, (200, 100, 255), (bx, by, CELL_SIZE, CELL_SIZE), width=3)
+
+        elif highlight == "gold":
+            SB = GRID_COLS * CELL_SIZE
+            gold_rect = pygame.Rect(SB + 8, 40, SIDEBAR_WIDTH - 16, 50)
+            pygame.draw.rect(self.screen, (255, 100, 180), gold_rect, width=3, border_radius=8)
+
+        elif highlight == "sidebar":
+            SB = GRID_COLS * CELL_SIZE
+            sidebar_rect = pygame.Rect(SB, 0, SIDEBAR_WIDTH, SCREEN_H)
+            pygame.draw.rect(self.screen, (0, 210, 255), sidebar_rect, width=3)
+
+        elif highlight == "grid" and my < box_y:
+            grid_col, grid_row = mx // CELL_SIZE, my // CELL_SIZE
+            if 0 <= grid_col < GRID_COLS and 0 <= grid_row < GRID_ROWS:
+                rect = pygame.Rect(grid_col * CELL_SIZE, grid_row * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+                pygame.draw.rect(self.screen, (100, 255, 100), rect, width=2)
+
+        elif highlight == "tower" and self.towers:
+            t = self.towers[0]
+            tr, tc = t.grid_pos
+            rect = pygame.Rect(tc * CELL_SIZE, tr * CELL_SIZE, CELL_SIZE, CELL_SIZE)
+            pygame.draw.rect(self.screen, (255, 220, 80), rect, width=3)
+
+        if highlight == "wave_btn" and req == "wave_started":
+            wave_btn = pygame.Rect(20, box_y - 56, 200, 44)
+            self.level_0_wave_btn = wave_btn
+            is_hover_w = wave_btn.collidepoint(mx, my)
+            wave_started = getattr(self, 'wave_active', False)
+            if wave_started:
+                btn_col = (60, 60, 60)
+                border_col = (100, 100, 100)
+                btn_label = "ĐÃ BẮT ĐẦU"
+            else:
+                btn_col = (50, 180, 90) if is_hover_w else (30, 140, 65)
+                border_col = (100, 220, 130) if is_hover_w else (70, 160, 100)
+                btn_label = "BẮT ĐẦU SÓNG"
+            pygame.draw.rect(self.screen, btn_col, wave_btn, border_radius=8)
+            pygame.draw.rect(self.screen, border_col, wave_btn, width=2, border_radius=8)
+            lbl_w = self.fonts['md'].render(btn_label, True, (255, 255, 255))
+            self.screen.blit(lbl_w, (wave_btn.x + wave_btn.w // 2 - lbl_w.get_width() // 2, wave_btn.y + 10))
+        else:
+            self.level_0_wave_btn = None
+
+        if req != "wave_complete":
+            can_advance = self._level_0_can_advance()
+            next_btn = pygame.Rect(SCREEN_W - 170, box_y + box_h - 54, 150, 44)
+            self.level_0_next_btn = next_btn
+            is_hover_n = next_btn.collidepoint(mx, my) and can_advance
+            if can_advance:
+                btn_col = (50, 120, 70) if is_hover_n else (35, 90, 50)
+                border_col = (100, 220, 130) if is_hover_n else (70, 160, 100)
+                lbl_col = (255, 255, 255)
+            else:
+                btn_col = (50, 50, 55)
+                border_col = (80, 80, 90)
+                lbl_col = (130, 130, 140)
+            pygame.draw.rect(self.screen, btn_col, next_btn, border_radius=8)
+            pygame.draw.rect(self.screen, border_col, next_btn, width=2, border_radius=8)
+            lbl_n = self.fonts['md'].render("TIẾP THEO", True, lbl_col)
+            self.screen.blit(lbl_n, (next_btn.x + next_btn.w // 2 - lbl_n.get_width() // 2, next_btn.y + 10))
+        else:
+            self.level_0_next_btn = None
+
+    def handle_level_0_tutorial(self, dt):
+        pass
+
+    def draw_tutorial_overlay(self):
+        overlay = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 180))
+        self.screen.blit(overlay, (0, 0))
+        
+        steps = [
+            "Thưa Nữ hoàng... Chào mừng đến với Khóa Huấn Luyện.",
+            "Di chuyển quân Bạch Quốc đến vị trí Spawn (Nhấn chuột vào ô trắng).",
+            "Mua và đặt một tháp (Ballista) trên vị trí gần Spawn.",
+            "Bắt đầu trận đấu – Đánh bại 3 quái đầu tiên."
+        ]
+        text = steps[self.tutorial_step] if self.tutorial_step < len(steps) else "Hướng dẫn hoàn thành!"
+        
+        txt_surf = self.fonts['lg'].render(text, True, (255, 255, 200))
+        box_w = txt_surf.get_width() + 40
+        box_rect = pygame.Rect(SCREEN_W//2 - box_w//2, SCREEN_H//2 - 60, box_w, 60)
+        pygame.draw.rect(self.screen, (20, 25, 35), box_rect, border_radius=10)
+        pygame.draw.rect(self.screen, (100, 200, 255), box_rect, width=2, border_radius=10)
+        self.screen.blit(txt_surf, (SCREEN_W//2 - txt_surf.get_width()//2, SCREEN_H//2 - 45))
+        
+        # Simple arrow placeholder (a white triangle)
+        arrow = pygame.Surface((30, 30), pygame.SRCALPHA)
+        pygame.draw.polygon(arrow, (255,255,255), [(0,0),(15,30),(30,0)])
+        
+        # Position arrow based on step
+        if self.tutorial_step == 0:
+            hint_lbl = self.fonts['md'].render("Click để tiếp tục", True, (150, 150, 170))
+            self.screen.blit(hint_lbl, (SCREEN_W//2 - hint_lbl.get_width()//2, SCREEN_H//2 + 10))
+        elif self.tutorial_step == 1:
+            pos = (SPAWN_POS[1]*CELL_SIZE + CELL_SIZE//2 - 15, SPAWN_POS[0]*CELL_SIZE - 40)
+            self.screen.blit(arrow, pos)
+        elif self.tutorial_step == 2:
+            pos = (SPAWN_POS[1]*CELL_SIZE + 60, SPAWN_POS[0]*CELL_SIZE - 10)
+            self.screen.blit(arrow, pos)
 
     def draw_pause(self):
         self.draw_game()
@@ -2346,6 +2882,10 @@ class GameEngine:
 
     # -------------------------------------------------------------- UPDATE
     def update_game(self, dt):
+        # Handle Level 0 tutorial progression
+        if getattr(self, 'level_0_tutorial_active', False):
+            self.handle_level_0_tutorial(dt)
+
         if getattr(self, 'selected_entity_on_map', None):
             return # Pause game logic for inspect
 
@@ -2401,9 +2941,37 @@ class GameEngine:
 
         if not self.wave_active and self.monsters.is_empty() and self.wave_queue.is_empty():
             self.gold += WAVE_CLEAR_BONUS
+
+            # Level 0 Tutorial completion
+            if getattr(self, 'level_0_tutorial_active', False):
+                self.level_0_tutorial_active = False
+                is_practice = getattr(self, 'from_tutorial_practice', False)
+                if not is_practice:
+                    self.has_seen_tutorial = True
+                    save_progress(self.unlocked_level, getattr(self, 'has_selected_faction', False), getattr(self, 'has_seen_intro', False), True, getattr(self, 'has_beaten_game', False))
+
+                if is_practice:
+                    self.warning_text = "Hoàn thành khóa huấn luyện! Chúc Nữ Vương thượng lộ bình an!"
+                    self.warning_timer = 180
+                    self.state = "SETTINGS"
+                else:
+                    self.warning_text = "Hoàn thành khóa huấn luyện! Chúc Nữ Vương thượng lộ bình an!"
+                    self.warning_timer = 180
+                    self.state = "LEVEL_SELECT"
+                return
+
+            if getattr(self, 'tutorial_active', False):
+                self.tutorial_active = False
+                self.has_seen_tutorial = True
+                save_progress(self.unlocked_level, getattr(self, 'has_selected_faction', False), getattr(self, 'has_seen_intro', False), True, getattr(self, 'has_beaten_game', False))
+                self.warning_text = "Hoàn thành Khóa Huấn Luyện!"
+                self.warning_timer = 180
+                self.state = "SETTINGS" if getattr(self, 'from_practice', False) else "LEVEL_SELECT"
+                return
+
             if self.current_level < 10 and self.current_level >= self.unlocked_level:
                 self.unlocked_level = self.current_level + 1
-                save_progress(self.unlocked_level, getattr(self, 'has_selected_faction', False), getattr(self, 'has_seen_intro', False), getattr(self, 'has_beaten_game', False))
+                save_progress(self.unlocked_level, getattr(self, 'has_selected_faction', False), getattr(self, 'has_seen_intro', False), self.has_seen_tutorial, getattr(self, 'has_beaten_game', False))
             
             if self.current_level < 10:
                 self.state = "LEVEL_VICTORY"
@@ -2415,7 +2983,7 @@ class GameEngine:
                 self.final_from_settings = False
                 self.story_button_cooldown = 3.0
                 self.has_beaten_game = True
-                save_progress(self.unlocked_level, getattr(self, 'has_selected_faction', False), getattr(self, 'has_seen_intro', False), True)
+                save_progress(self.unlocked_level, getattr(self, 'has_selected_faction', False), getattr(self, 'has_seen_intro', False), self.has_seen_tutorial, True)
                 self.start_ending_music()
 
         for t in self.towers[:]:
@@ -2556,6 +3124,14 @@ class GameEngine:
     # ------------------------------------------------------------ INPUT
     def handle_input_game(self, event):
         if event.type == pygame.KEYDOWN:
+            if getattr(self, 'tutorial_active', False):
+                if event.key == pygame.K_ESCAPE:
+                    self.play_click()
+                    self.tutorial_active = False
+                    self.has_seen_tutorial = True
+                    save_progress(self.unlocked_level, getattr(self, 'has_selected_faction', False), getattr(self, 'has_seen_intro', False), True, getattr(self, 'has_beaten_game', False))
+                    self.state = "SETTINGS" if getattr(self, 'from_practice', False) else "MENU"
+                return
             if event.key == pygame.K_r:     self.reset_game(self.current_level)
             if event.key == pygame.K_ESCAPE:
                 self.play_click()
@@ -2563,7 +3139,50 @@ class GameEngine:
                 
         if event.type == pygame.MOUSEBUTTONDOWN:
             mx, my = pygame.mouse.get_pos()
+
+            if getattr(self, 'level_0_tutorial_active', False):
+                next_btn = getattr(self, 'level_0_next_btn', None)
+                if next_btn and next_btn.collidepoint(mx, my) and event.button == 1:
+                    if self._level_0_can_advance():
+                        self.play_click()
+                        self.level_0_step += 1
+                        if self.level_0_step == 5:
+                            self.dragged_tower_type = None
+                            self.selected_entity_on_map = None
+                    return
+                wave_btn = getattr(self, 'level_0_wave_btn', None)
+                if wave_btn and wave_btn.collidepoint(mx, my) and event.button == 1:
+                    if getattr(self, 'level_0_step', 0) == 6 and not getattr(self, 'wave_active', False):
+                        self.play_click()
+                        self.wave_active = True
+                    return
+                box_y = SCREEN_H - int(SCREEN_H * 0.32)
+                if my >= box_y:
+                    return
             
+            if getattr(self, 'tutorial_active', False):
+                if self.tutorial_step == 0:
+                    self.tutorial_step = 1
+                    return
+                elif self.tutorial_step == 1:
+                    SB = GRID_COLS * CELL_SIZE
+                    if mx <= SB:
+                        col, row = mx // CELL_SIZE, my // CELL_SIZE
+                        if row == SPAWN_POS[0] and col == SPAWN_POS[1]:
+                            self.tutorial_step = 2
+                    return
+                elif self.tutorial_step == 2:
+                    # Allow selecting tower and placing, advance step after successful placement
+                    if getattr(self, 'dragged_tower_type', None) is None:
+                        # Player selected a tower type
+                        pass
+                    else:
+                        # Tower type selected, wait for placement click handled below
+                        pass
+                elif self.tutorial_step == 3:
+                    # Allow game interaction but no new placements. Tutorial completes after 3 monsters killed.
+                    # Completion handled in update_game when wave ends and tutorial_active turns off.
+                    pass
             # 1. Inspect state clicks
             if getattr(self, 'selected_entity_on_map', None):
                 if event.button == 1:
@@ -2580,6 +3199,8 @@ class GameEngine:
             # 2. Sidebar clicks – click to SELECT tower type
             SB = GRID_COLS * CELL_SIZE
             if mx > SB and event.button == 1:
+                if self._level_0_blocks_input("sidebar"):
+                    return
                 avail = TOWERS_BY_LEVEL.get(self.current_level, ["Ballista"])
                 CARD_H = 56
                 y = 115 + 22  # match draw_game y start after header
@@ -2609,6 +3230,15 @@ class GameEngine:
                     # If a tower type is selected, try placing it
                     sel_tw = getattr(self, 'dragged_tower_type', None)
                     if sel_tw:
+                        if self._level_0_blocks_input("place"):
+                            if getattr(self, 'level_0_tutorial_active', False) and getattr(self, 'level_0_step', 0) == 4:
+                                placed = getattr(self, 'level_0_towers_placed', 0)
+                                if placed >= 3:
+                                    self.floating_texts.append(FloatingText(mx, my, "ĐỦ 3 THÁP! Nhấn TIẾP THEO", (255, 200, 100)))
+                            return
+                        if getattr(self, 'tutorial_active', False) and self.tutorial_step == 3:
+                            self.floating_texts.append(FloatingText(mx, my, "KHÔNG ĐƯỢC XÂY THÊM!", (255, 100, 100)))
+                            return
                         if self.grid[row][col] == 0:
                             tw_class = TOWER_REGISTRY.get(sel_tw)
                             if tw_class:
@@ -2624,6 +3254,14 @@ class GameEngine:
                                         rs = [(tw, tmr) for tw, tmr in rs if tw is not temp]
                                         rs.append((temp, 5.0))
                                         self.range_show = rs
+
+                                        if getattr(self, 'level_0_tutorial_active', False) and getattr(self, 'level_0_step', 0) == 4:
+                                            self.level_0_towers_placed = getattr(self, 'level_0_towers_placed', 0) + 1
+                                        
+                                        if getattr(self, 'tutorial_active', False) and self.tutorial_step == 2:
+                                            self.tutorial_step = 3
+                                            self.wave_active = True # Bắt đầu wave
+                                            
                                     else:
                                         self.grid[row][col] = 0
                                         self.floating_texts.append(FloatingText(mx, my, "BỊT ĐƯỜNG!", (255,0,0)))
@@ -2632,9 +3270,13 @@ class GameEngine:
                         return
 
                     # No tower selected – check entity inspect
+                    if self._level_0_blocks_input("inspect"):
+                        return
                     for t in self.towers:
                         if t.grid_pos == (row, col):
                             self.selected_entity_on_map = t
+                            if getattr(self, 'level_0_tutorial_active', False) and getattr(self, 'level_0_step', 0) == 5:
+                                self.level_0_tower_inspected = True
                             return
                     node = self.monsters.head
                     while node:
@@ -2659,8 +3301,62 @@ class GameEngine:
                                 self.floating_texts.append(FloatingText(mx, my, f"UP LV{t.level}!", (0,255,255)))
                             return
 
+    def _build_video_watermark_cover(self):
+        """Che chữ Veo: ô vuông đen + icon, bám góc dưới-phải."""
+        size = max(195, int(SCREEN_W * 0.156))  # Đủ rộng che Veo (90-180px tùy video)
+        margin_x = max(4, int(SCREEN_W * 0.003))
+        margin_y = max(4, int(SCREEN_H * 0.006))
+        shift_left = max(14, int(SCREEN_W * 0.011))  # Canh chuẩn để cover trùng khớp Veo
+        x = SCREEN_W - size - margin_x - shift_left
+        y = SCREEN_H - size - margin_y
+
+        # #region agent log
+        try:
+            import json as _json, sys as _sys
+            with open("debug-8d36d7.log", "a") as _f:
+                _f.write(_json.dumps({
+                    "id": f"log_{__import__('time').time_ns()}",
+                    "timestamp": __import__('time').time_ns() // 1_000_000,
+                    "location": "main.py:3283",
+                    "message": "watermark_cover_built",
+                    "data": {"size": size, "x": x, "y": y, "SCREEN_W": SCREEN_W, "SCREEN_H": SCREEN_H, "margin_x": margin_x, "margin_y": margin_y, "shift_left": shift_left, "right_edge": x + size, "bottom_edge": y + size},
+                    "runId": "pre-fix",
+                    "hypothesisId": "A"
+                }) + "\n")
+            print(f"[LOG] watermark_cover_built: size={size}, x={x}, y={y}, SCREEN={SCREEN_W}x{SCREEN_H}", flush=True)
+        except Exception as _e:
+            print(f"[LOG ERROR] watermark_cover_built: {_e}", flush=True)
+        # #endregion
+
+        patch = pygame.Surface((size, size))
+        patch.fill((0, 0, 0))
+
+        icon_path = "assets/ui/icon.png"
+        if os.path.exists(icon_path):
+            try:
+                icon = pygame.image.load(icon_path).convert_alpha()
+                pad = 4
+                inner = size - pad * 2
+                icon = pygame.transform.smoothscale(icon, (inner, inner))
+                patch.blit(icon, (pad, pad))
+            except Exception:
+                pass
+
+        self._watermark_cover = patch.convert()
+        self._watermark_cover_pos = (x, y)
+
+    def _draw_video_watermark_cover(self):
+        cover_key = (SCREEN_W, SCREEN_H)
+        if getattr(self, '_watermark_cover_key', None) != cover_key:
+            self._build_video_watermark_cover()
+            self._watermark_cover_key = cover_key
+        self.screen.blit(self._watermark_cover, self._watermark_cover_pos)
+
     def update_video_state(self):
         """Render từng frame video lên màn hình và quản lý chuyển trạng thái."""
+        # #region agent log
+        print(f"[LOG] update_video_state: state={self.state}, has_logo={getattr(self,'logo_cap',None) is not None}, has_intro={getattr(self,'intro_cap',None) is not None}", flush=True)
+        # #endregion
         try:
             import cv2, numpy
         except:
@@ -2694,7 +3390,24 @@ class GameEngine:
                     frame = cv2.resize(frame, (SCREEN_W, SCREEN_H))
                     surf = pygame.surfarray.make_surface(frame.swapaxes(0, 1))
                     self.screen.blit(surf, (0, 0))
-                    
+                    self._draw_video_watermark_cover()
+
+                    # #region agent log
+                    try:
+                        import json as _json
+                        with open("debug-8d36d7.log", "a") as _f:
+                            _f.write(_json.dumps({
+                                "id": f"log_{__import__('time').time_ns()}",
+                                "timestamp": __import__('time').time_ns() // 1_000_000,
+                                "location": "main.py:3341",
+                                "message": "watermark_draw_logo_state",
+                                "data": {"state": self.state, "cover_pos": getattr(self, '_watermark_cover_pos', None), "has_icon": os.path.exists("assets/ui/icon.png")},
+                                "runId": "pre-fix",
+                                "hypothesisId": "C"
+                            }) + "\n")
+                    except: pass
+                    # #endregion
+
                     if self.state == "FADE_IN_LOGO":
                         self.fade_alpha -= 3
                         if self.fade_alpha <= 0:
@@ -2768,6 +3481,7 @@ class GameEngine:
                     surf = pygame.surfarray.make_surface(frame.swapaxes(0, 1))
                     self.last_intro_surf = surf.copy()  # Lưu frame cuối để dùng cho cross-dissolve
                     self.screen.blit(surf, (0, 0))
+                    self._draw_video_watermark_cover()
                     
                     if self.state == "FADE_IN_INTRO":
                         self.fade_alpha -= 3
@@ -2789,6 +3503,7 @@ class GameEngine:
             # Vẽ frame cuối của intro phía dưới
             if getattr(self, 'last_intro_surf', None):
                 self.screen.blit(self.last_intro_surf, (0, 0))
+                self._draw_video_watermark_cover()
             else:
                 self.screen.fill((0, 0, 0))
             # Vẽ menu background đè lên với alpha tăng dần
@@ -2902,7 +3617,11 @@ class GameEngine:
 
                         
             if self.state in VIDEO_STATES:
-                self.update_video_state()
+                print(f"[LOG] main_loop: calling update_video_state, state={self.state}", flush=True)
+                try:
+                    self.update_video_state()
+                except Exception as _e:
+                    print(f"[LOG ERROR] update_video_state raised: {_e}", flush=True)
             elif self.state == "CAT_LOADING":   self.draw_cat_loading()
             elif self.state == "MENU":     self.draw_menu()
             elif self.state == "FACTION_SELECT": self.draw_faction_select()
@@ -2916,6 +3635,7 @@ class GameEngine:
             elif self.state == "GAME":
                 self.update_game(dt)
                 self.draw_game()
+                self.draw_level_0_tutorial()
             elif self.state == "PAUSE":
                 self.draw_pause()
             elif self.state == "GAMEOVER":
