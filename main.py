@@ -2032,6 +2032,15 @@ class GameEngine:
         return list(new_monsters), list(new_towers)
 
     def draw_story(self):
+        # Redirect Level 1 first-time to tutorial before showing story
+        if self.current_level == 1 and not getattr(self, 'has_seen_tutorial', False):
+            self.level_0_tutorial_active = True
+            self.level_0_step = 0
+            self.from_tutorial_practice = False
+            self._init_level_0_tutorial_state()
+            self.reset_game(0)
+            self.state = "GAME"
+            return
         self.screen.fill(C_MENU_BG)
         mx, my = pygame.mouse.get_pos()
         click = pygame.mouse.get_pressed()[0]
