@@ -3360,6 +3360,7 @@ class GameEngine:
         try:
             import cv2, numpy
         except:
+            print(f"[LOG ERROR] update_video_state: cv2/numpy import failed - calling skip_videos", flush=True)
             self.skip_videos(); return
 
         if self.state == "START_DELAY":
@@ -3390,23 +3391,6 @@ class GameEngine:
                     frame = cv2.resize(frame, (SCREEN_W, SCREEN_H))
                     surf = pygame.surfarray.make_surface(frame.swapaxes(0, 1))
                     self.screen.blit(surf, (0, 0))
-                    self._draw_video_watermark_cover()
-
-                    # #region agent log
-                    try:
-                        import json as _json
-                        with open("debug-8d36d7.log", "a") as _f:
-                            _f.write(_json.dumps({
-                                "id": f"log_{__import__('time').time_ns()}",
-                                "timestamp": __import__('time').time_ns() // 1_000_000,
-                                "location": "main.py:3341",
-                                "message": "watermark_draw_logo_state",
-                                "data": {"state": self.state, "cover_pos": getattr(self, '_watermark_cover_pos', None), "has_icon": os.path.exists("assets/ui/icon.png")},
-                                "runId": "pre-fix",
-                                "hypothesisId": "C"
-                            }) + "\n")
-                    except: pass
-                    # #endregion
 
                     if self.state == "FADE_IN_LOGO":
                         self.fade_alpha -= 3
@@ -3416,6 +3400,25 @@ class GameEngine:
                         dark = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
                         dark.fill((0, 0, 0, max(0, self.fade_alpha)))
                         self.screen.blit(dark, (0, 0))
+
+                    # Vẽ watermark COVER SAU overlay để luôn hiển thị trên cùng
+                    self._draw_video_watermark_cover()
+
+                    # #region agent log
+                    try:
+                        import json as _json
+                        with open("debug-8d36d7.log", "a") as _f:
+                            _f.write(_json.dumps({
+                                "id": f"log_{__import__('time').time_ns()}",
+                                "timestamp": __import__('time').time_ns() // 1_000_000,
+                                "location": "main.py:3413",
+                                "message": "watermark_after_overlay",
+                                "data": {"state": self.state, "fade_alpha": getattr(self,'fade_alpha',None), "cover_pos": getattr(self, '_watermark_cover_pos', None)},
+                                "runId": "post-fix",
+                                "hypothesisId": "D"
+                            }) + "\n")
+                    except: pass
+                    # #endregion
                 else:
                     self.logo_cap.release(); self.logo_cap = None
                     pygame.mixer.music.stop()
@@ -3481,8 +3484,7 @@ class GameEngine:
                     surf = pygame.surfarray.make_surface(frame.swapaxes(0, 1))
                     self.last_intro_surf = surf.copy()  # Lưu frame cuối để dùng cho cross-dissolve
                     self.screen.blit(surf, (0, 0))
-                    self._draw_video_watermark_cover()
-                    
+
                     if self.state == "FADE_IN_INTRO":
                         self.fade_alpha -= 3
                         if self.fade_alpha <= 0:
@@ -3491,6 +3493,9 @@ class GameEngine:
                         dark = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
                         dark.fill((0, 0, 0, max(0, self.fade_alpha)))
                         self.screen.blit(dark, (0, 0))
+
+                    # Vẽ watermark COVER SAU overlay để luôn hiển thị trên cùng
+                    self._draw_video_watermark_cover()
                 else:
                     self.intro_cap.release(); self.intro_cap = None
                     self.state = "CROSSFADE_TO_MENU"
