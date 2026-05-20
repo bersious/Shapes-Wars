@@ -2235,25 +2235,34 @@ class GameEngine:
         pygame.draw.rect(self.screen, (25, 28, 40), (18, 70, 254, SCREEN_H-88), border_radius=12)
         pygame.draw.rect(self.screen, (60, 65, 85), (18, 70, 254, SCREEN_H-88), width=2, border_radius=12)
         y = 90
+        ICON_W = 28
+        NAME_X = 26 + ICON_W + 8
+        ROW_H = 36
         for section_name, section_color, items in [
             ("QUÂN BẠCH QUỐC", (255,100,100), ["Lurker","Drifter","Brute","Phantom","Ravager","Titan"]),
             ("VŨ KHÍ HẮC QUỐC",   (100,180,255), ["Ballista","Phalanx","Ignis","Kronos","Ares","Hephaestus","Thanatos"]),
         ]:
             self.screen.blit(self.fonts['sm'].render(section_name, True, section_color), (30, y)); y+=28
             for name in items:
-                r = pygame.Rect(26, y, 236, 30)
+                row_y = y
+                r = pygame.Rect(26, row_y, 236, ROW_H)
                 sel = (name == self.dict_selected)
                 bg = (60, 100, 160) if sel else ((50, 60, 80) if r.collidepoint(mx,my) else (30, 35, 50))
                 pygame.draw.rect(self.screen, bg, r, border_radius=6)
                 if sel: pygame.draw.rect(self.screen, (100, 200, 255), r, width=2, border_radius=6)
-                self.screen.blit(self.fonts['sm'].render(name, True, (255,255,255) if sel else (180,180,180)), (38, y+5))
+                # Draw in-game icon
+                icon_cx = 26 + ICON_W // 2
+                icon_cy = row_y + ROW_H // 2
+                draw_entity_shape(self.screen, name, icon_cx, icon_cy, 0)
+                # Draw name
+                self.screen.blit(self.fonts['sm'].render(name, True, (255,255,255) if sel else (180,180,180)), (NAME_X, row_y + (ROW_H - self.fonts['sm'].get_height()) // 2))
                 if click and r.collidepoint(mx, my): 
                     self.play_click()
                     self.dict_selected = name
                     if hasattr(self, 'posters') and name in self.posters and self.posters[name] is None:
                         del self.posters[name]
                     pygame.time.delay(140)
-                y += 34
+                y += ROW_H
             y += 14
 
         d = ENCYCLOPEDIA_DATA.get(self.dict_selected)
