@@ -2198,8 +2198,17 @@ class GameEngine:
 
         if click and is_hover_start:
             self.play_click()
-            self.wave_active = True
-            self.start_cat_loading("GAME")
+            # Chạy Level 0 tutorial nếu chưa từng thấy
+            if self.current_level == 1 and not getattr(self, 'has_seen_tutorial', False):
+                self.level_0_tutorial_active = True
+                self.level_0_step = 0
+                self.from_tutorial_practice = False
+                self._init_level_0_tutorial_state()
+                self.reset_game(0)
+                self.state = "GAME"
+            else:
+                self.wave_active = True
+                self.start_cat_loading("GAME")
             pygame.time.delay(150)
 
     # ---------------------------------------------------------------- DICT
@@ -3303,10 +3312,10 @@ class GameEngine:
 
     def _build_video_watermark_cover(self):
         """Che chữ Veo: ô vuông đen + icon, bám góc dưới-phải."""
-        size = max(195, int(SCREEN_W * 0.156))  # Đủ rộng che Veo (90-180px tùy video)
-        margin_x = max(4, int(SCREEN_W * 0.003))
+        size = max(58, int(SCREEN_W * 0.058))
+        margin_x = max(4, int(SCREEN_W * 0.006))
         margin_y = max(4, int(SCREEN_H * 0.006))
-        shift_left = max(14, int(SCREEN_W * 0.011))  # Canh chuẩn để cover trùng khớp Veo
+        shift_left = max(5, int(SCREEN_W * 0.005))
         x = SCREEN_W - size - margin_x - shift_left
         y = SCREEN_H - size - margin_y
 
