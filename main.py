@@ -230,7 +230,7 @@ LEVEL_0_GUIDE_STEPS = [
     },
     {
         "title": "Hệ Thống Tim",
-        "text": "Tim ❤️ là tiền dùng để mua và nâng cấp tháp. Tiêu diệt quái vật sẽ nhận thêm Tim. Trong khóa huấn luyện, bạn có vô hạn Tim — hãy thử nghiệm thoải mái!",
+        "text": "Tim [♥] la tien dung de mua va nang cap thap. Tieu diet quai vat se nhan them Tim. Trong khoa huan luyen, ban co vo han Tim - hay thu nghiem thoai mai!",
         "highlight": "gold",
     },
     {
@@ -374,26 +374,39 @@ Thuật toán Breadth-First Search (BFS):
 
 --- HỆ THỐNG CỐ VẤN AI & THAM KHẢO (AI CO-PILOT) ---
 Quá trình tối ưu hóa mã nguồn và xử lý các lỗi thuật toán phức tạp
-có sự đồng hành, hỗ trợ tra cứu từ Hệ thống Antigravity 
+có sự đồng hành, hỗ trợ tra cứu từ Hệ thống Antigravity
 thông qua các mô hình ngôn ngữ lớn tiên tiến nhất:
 - Gemini 3.1
 - Claude Opus 4.7
 - Claude Sonnet 4.6
 
+Hệ thống hỗ trợ viết code trực tiếp (luân phiên tránh quota):
+- Cursor Pro (Agent mode)
+- VS Code Studio (Agent mode)
+
 
 --- ÂM NHẠC XUYÊN SUỐT TRÒ CHƠI (OFFICIAL SOUNDTRACK) ---
-Bài hát chủ đề: Ước Anh Tan Nát Con Tim
+Bai hat chu de: Ước Anh Tan Nát Con Tim (Instrumental)
 Thể hiện bởi nghệ sĩ: Phùng Khánh Linh
 Nguồn phát trực tuyến: YouTube Official Visualizer
-Đường dẫn âm nhạc: https://www.youtube.com/watch?v=xg0hNDgqurM
-(Giai điệu mang đến một không gian kịch tính, đầy cảm xúc
-hòa quyện vào những trận chiến thủ thành căng thẳng)
+Đường dẫn: https://www.youtube.com/watch?v=xg0hNDgqurM
+
+Nhạc nền Gameplay 1: GRIEF IS THE PRICE YOU PAY FOR LOVE (Instrumental)
+Nguồn: https://youtu.be/5yAjz4yxHlU
+
+Nhạc nền Gameplay 2: GRIEF IS THE PRICE YOU PAY FOR LOVE (Instrumental)
+Nguồn: https://youtu.be/5yAjz4yxHlU
+
+Nhạc Outro: No Time to Die (Instrumental)
+Nguồn: https://youtu.be/PkPponu9MTc
+
 *dạo này bản quyền gắt, mong mik ko bị đánh bản quyền
 
 
 ========================================================================
 MỨC ĐỘ HOÀN THÀNH DỰ ÁN: 100%
 *Hoàn thành trong một đêm: 18-19/05/2026
+*Fix bug & nâng cấp trong đêm: 21/05/2026
 CẢM ƠN BẠN ĐÃ TRẢI NGHIỆM TRÒ CHƠI CỦA BERSIOUS.!
 GAME OVER - VICTORY IS YOURS!
 ========================================================================
@@ -648,18 +661,99 @@ class GameEngine:
 
     def start_outro_music(self):
         try:
-            # Try to load and play outro.mp3
             pygame.mixer.music.load("assets/audio/outro.mp3")
             pygame.mixer.music.play(-1, fade_ms=1500)
             pygame.mixer.music.set_volume(0 if getattr(self, 'is_muted', False) else 0.5)
         except:
-            # Fallback to song2.mp3 if outro.mp3 is not present
             try:
                 pygame.mixer.music.load("assets/audio/song2.mp3")
                 pygame.mixer.music.play(-1, fade_ms=1500)
                 pygame.mixer.music.set_volume(0 if getattr(self, 'is_muted', False) else 0.5)
             except:
                 pass
+
+    # ─── Background Music Crossfade ────────────────────────────────────────────
+    # bgm.mp3 (track 1) + song3.mp3 (track 2) xen kẽ mượt mà suốt game
+    CROSSFADE_DURATION = 4000  # ms
+
+    def _music_vol(self):
+        return 0.0 if getattr(self, 'is_muted', False) else 0.5
+
+    def _sound_duration(self, snd):
+        try:
+            return snd.get_length() * 1000
+        except:
+            return 60000
+
+    def _load_second_track(self, path):
+        if not hasattr(self, '_music2'):
+            try:
+                self._music2 = pygame.mixer.Sound(path)
+                self._music2.set_volume(0)
+            except:
+                self._music2 = None
+
+    def _start_crossfade(self, new_track_path, new_is_track1):
+        self._load_second_track(new_track_path)
+        if self._music2:
+            self._music2.play(loops=-1)
+            self._crossfade_t = 0
+            self._crossfade_duration = self.CROSSFADE_DURATION
+            self._crossfade_new_is_track1 = new_is_track1
+            self._current_is_track1 = new_is_track1
+
+    def _switch_to_next_song(self):
+        if getattr(self, '_crossfade_t', None) is not None:
+            return
+        if getattr(self, '_current_is_track1', True):
+            self._start_crossfade("assets/audio/song3.mp3", False)
+        else:
+            self._start_crossfade("assets/audio/bgm.mp3", True)
+
+    def update_music_crossfade(self, dt_ms):
+        vol = self._music_vol()
+        t = getattr(self, '_crossfade_t', None)
+        if t is not None:
+            self._crossfade_t += dt_ms
+            ratio = min(1.0, self._crossfade_t / self._crossfade_duration)
+            if self._crossfade_new_is_track1:
+                pygame.mixer.music.set_volume(vol * (1.0 - ratio))
+                if self._music2:
+                    self._music2.set_volume(vol * ratio)
+            else:
+                pygame.mixer.music.set_volume(vol * ratio)
+                if self._music2:
+                    self._music2.set_volume(vol * (1.0 - ratio))
+            if ratio >= 1.0:
+                if not self._crossfade_new_is_track1:
+                    pygame.mixer.music.pause()
+                    if self._music2:
+                        self._music2.set_volume(vol)
+                    cur = pygame.mixer.music
+                else:
+                    if self._music2:
+                        self._music2.stop()
+                    pygame.mixer.music.unpause()
+                    pygame.mixer.music.set_volume(vol)
+                    cur = self._music2
+                self._crossfade_t = None
+                if getattr(self, '_in_gameplay', False):
+                    dur = self._sound_duration(cur)
+                    self._song_switch_t = 0
+                    self._song_switch_duration = dur
+        else:
+            if getattr(self, '_in_gameplay', False):
+                self._song_switch_t = getattr(self, '_song_switch_t', 0) + dt_ms
+                dur = getattr(self, '_song_switch_duration', 60000)
+                if self._song_switch_t >= dur:
+                    self._song_switch_t = 0
+                    self._switch_to_next_song()
+
+    def start_menu_music_crossfade(self):
+        self._start_crossfade("assets/audio/bgm.mp3", True)
+
+    def start_song3_crossfade(self):
+        self._start_crossfade("assets/audio/song3.mp3", False)
 
     def __init__(self):
         pygame.init()
@@ -899,9 +993,16 @@ class GameEngine:
                 ]
                 m_obj.grid_ref = self.grid
 
-                # Level 0: Fixed path (no scatter)
+                # Level 0: Walk toward player's tower (so player can see towers shoot)
                 if getattr(self, 'is_level_0', False):
                     m_obj.path = bfs_find_path(self.grid, SPAWN_POS, BASE_POS)
+                    if self.towers:
+                        target_tower = random.choice(list(self.towers))
+                        tr, tc = target_tower.grid_pos
+                        tower_pos = (tr, tc)
+                        alt_path = bfs_find_path(self.grid, SPAWN_POS, tower_pos)
+                        if alt_path:
+                            m_obj.path = alt_path
                     m_obj.path_index = 0
                     self.monsters.append(m_obj)
                     return
@@ -1077,6 +1178,7 @@ class GameEngine:
                         self.from_tutorial_practice = False
                         self._init_level_0_tutorial_state()
                         self.reset_game(0)
+                        self._pending_music_crossfade = True
                         self.state = "GAME"
                     else:
                         self.state = "LEVEL_SELECT"
@@ -1447,6 +1549,7 @@ class GameEngine:
                     self.from_tutorial_practice = True
                     self._init_level_0_tutorial_state()
                     self.reset_game(0)
+                    self._pending_music_crossfade = True
                     self.state = "GAME"
                 pygame.time.delay(200)
                 
@@ -1544,8 +1647,14 @@ class GameEngine:
                 elif line_str.startswith("---"):
                     lbl = self.fonts['lg'].render(line_str, True, (255, 215, 0))   # Gold headers
                     self.screen.blit(lbl, (SCREEN_W//2 - lbl.get_width()//2, y))
+                elif "Cursor Pro" in line_str or "VS Code Studio" in line_str or "luân phiên" in line_str:
+                    lbl = self.fonts['sm'].render(line_str, True, (110, 110, 120)) # Subtle AI tool credits
+                    self.screen.blit(lbl, (SCREEN_W//2 - lbl.get_width()//2, y))
                 elif line_str.startswith("*"):
-                    lbl = self.fonts['xs'].render(line_str, True, (150, 150, 150)) # Small grey joke text
+                    lbl = self.fonts['xs'].render(line_str, True, (150, 150, 150)) # Small grey joke/copyright text
+                    self.screen.blit(lbl, (SCREEN_W//2 - lbl.get_width()//2, y))
+                elif "bai hat" in line_str or "Thể hiện" in line_str or "Nguồn" in line_str or "Đường dẫn" in line_str or "Nhạc nền" in line_str or "Nhạc Outro" in line_str or "(Instrumental)" in line_str or "https://" in line_str:
+                    lbl = self.fonts['sm'].render(line_str, True, (110, 110, 120)) # Subtle music credits (slightly larger)
                     self.screen.blit(lbl, (SCREEN_W//2 - lbl.get_width()//2, y))
                 elif "Nguyễn Thành Thiện Nhân" in line_str or "25521290" in line_str or "bersious." in line_str:
                     lbl = self.fonts['md'].render(line_str, True, (0, 230, 255))   # Cyan author highlight
@@ -1611,7 +1720,7 @@ class GameEngine:
                 "title": "Cơ Chế Cốt Lõi",
                 "items": [
                     ("Xây tháp", "Chọn tháp ở cột VŨ KHÍ bên phải, rồi click ô trống trên bản đồ. Tháp tự tấn công quái trong tầm.", (0, 230, 255)),
-                    ("Tim ❤️", "Tiền dùng mua và nâng cấp tháp. Nhận thêm Tim khi tiêu diệt quái Bạch Quốc.", (255, 90, 120)),
+                    ("TIM [♥]", "Tien dung mua va nang cap thap. Nhan them Tim khi tieu diet quai Bach Quoc.", (255, 90, 120)),
                     ("Đường đi (BFS)", "Quái luôn tìm đường ngắn nhất tới Thành. Không được chặn kín mọi lối đi.", (100, 255, 120)),
                     ("Nâng cấp", "Chuột phải vào tháp đã xây để nâng cấp (tăng sát thương).", (255, 200, 60)),
                 ],
@@ -1872,21 +1981,41 @@ class GameEngine:
         mx, my = pygame.mouse.get_pos()
         click = pygame.mouse.get_pressed()[0]
         
+        # Level 0 Circle - HƯỚNG DẪN (always visible)
+        cx0, cy0 = SCREEN_W // 2, 95
+        r0 = 52
+        lvl0_rect = pygame.Rect(cx0 - r0, cy0 - r0, r0 * 2, r0 * 2)
+        is_hover_0 = lvl0_rect.collidepoint(mx, my)
+        draw_glow(self.screen, cx0, cy0, r0 + 14, (255, 180, 60) if is_hover_0 else (200, 140, 40))
+        pygame.draw.circle(self.screen, (30, 25, 50), (cx0, cy0), r0)
+        pygame.draw.circle(self.screen, (255, 200, 60) if is_hover_0 else (180, 160, 80), (cx0, cy0), r0, 3)
+        qm = self.fonts['xl'].render("?", True, (255, 200, 60) if is_hover_0 else (180, 160, 80))
+        self.screen.blit(qm, (cx0 - qm.get_width()//2, cy0 - qm.get_height()//2 - 4))
+        lbl0 = self.fonts['sm'].render("HƯỚNG DẪN", True, (255, 200, 60))
+        self.screen.blit(lbl0, (cx0 - lbl0.get_width()//2, cy0 + r0 + 4))
+        if click and is_hover_0:
+            self.play_click()
+            self.level_0_tutorial_active = True
+            self.level_0_step = 0
+            self.from_tutorial_practice = False
+            self._init_level_0_tutorial_state()
+            self.reset_game(0)
+            self._pending_music_crossfade = True
+            self.state = "GAME"
+            pygame.time.delay(200)
+
         for i in range(1, 11):
             x = 240 + ((i-1)%5)*200
-            y = 200 + ((i-1)//5)*150
-            
+            y = 250 + ((i-1)//5)*150
+
             rect = pygame.Rect(x-40, y-40, 80, 80)
-            is_unlocked = i <= self.unlocked_level
+            is_unlocked = (i <= self.unlocked_level) and getattr(self, 'has_seen_tutorial', False)
             is_hover = rect.collidepoint(mx, my)
-            draw_rect = rect.inflate(12, 12) if is_hover else rect # Inflate slightly more for better premium pop-out effect
-            
-            # 1. Draw glowing effect behind the cell on hover
+            draw_rect = rect.inflate(12, 12) if is_hover else rect
+
             if is_hover:
                 glow_color = (80, 220, 100) if is_unlocked else (220, 60, 60)
                 draw_glow(self.screen, x, y, 65, glow_color)
-            elif i == 1 and is_unlocked and not getattr(self, 'has_seen_tutorial', False):
-                draw_glow(self.screen, x, y, 70, (255, 200, 60))
             
             # 2. Draw base background under the thumbnail
             pygame.draw.rect(self.screen, (20, 22, 30), draw_rect, border_radius=15)
@@ -1932,10 +2061,9 @@ class GameEngine:
                 # Gamification: Show a shining gold star if this level is completed/beaten!
                 is_beaten = i < self.unlocked_level or (i == 10 and getattr(self, 'has_beaten_game', False))
                 if is_beaten:
-                    star_lbl = self.fonts['md'].render("⭐", True, (255, 215, 0))
-                    # Draw a tiny glow behind the star
+                    star_lbl = self.fonts['md'].render("*", True, (255, 215, 0))
                     draw_glow(self.screen, draw_rect.right - 12, draw_rect.y + 12, 16, (255, 215, 0))
-                    self.screen.blit(star_lbl, (draw_rect.right - 22, draw_rect.y + 2))
+                    self.screen.blit(star_lbl, (draw_rect.right - 18, draw_rect.y + 2))
             else:
                 # Draw a proper lock icon using pygame shapes (emoji unreliable on Windows)
                 lk_cx, lk_cy = x, y
@@ -1964,6 +2092,7 @@ class GameEngine:
                         self.from_tutorial_practice = False
                         self._init_level_0_tutorial_state()
                         self.reset_game(0)
+                        self._pending_music_crossfade = True
                         self.state = "GAME"
                     else:
                         # Normal level start (story then game)
@@ -1990,27 +2119,6 @@ class GameEngine:
         if click and is_back_hover:
             self.play_click()
             self.state = "MENU"; pygame.time.delay(200)
-            
-        # Gameplay Guide Button in Level Select (top-right corner)
-        guide_btn = pygame.Rect(SCREEN_W - 160, 18, 140, 38)
-        is_guide_hover = guide_btn.collidepoint(mx, my)
-        pygame.draw.rect(self.screen, (0, 150, 180) if is_guide_hover else (0, 100, 120), guide_btn, border_radius=8)
-        pygame.draw.rect(self.screen, (0, 230, 255) if is_guide_hover else (0, 180, 210), guide_btn, width=1, border_radius=8)
-        lbl_g = self.fonts['md'].render("HƯỚNG DẪN", True, (255, 255, 255))
-        self.screen.blit(lbl_g, (guide_btn.x + guide_btn.w//2 - lbl_g.get_width()//2, guide_btn.y + 8))
-        if click and is_guide_hover:
-            self.play_click()
-            self.guide_popup_page = 0
-            self.show_guide_popup = True
-            pygame.time.delay(200)
-
-        if not getattr(self, 'has_seen_tutorial', False):
-            hint = self.fonts['sm'].render("★ Level 1: Bắt đầu Khóa Huấn Luyện", True, (255, 220, 80))
-            pulse = int(180 + 75 * abs(math.sin(pygame.time.get_ticks() / 400)))
-            hint_bg = pygame.Rect(SCREEN_W // 2 - hint.get_width() // 2 - 16, 68, hint.get_width() + 32, 32)
-            pygame.draw.rect(self.screen, (40, 35, 20, pulse), hint_bg, border_radius=8)
-            pygame.draw.rect(self.screen, (255, 200, 60), hint_bg, width=2, border_radius=8)
-            self.screen.blit(hint, (SCREEN_W // 2 - hint.get_width() // 2, 74))
 
     # --------------------------------------------------------------- STORY
     def get_new_elements_for_level(self, level):
@@ -2039,6 +2147,7 @@ class GameEngine:
             self.from_tutorial_practice = False
             self._init_level_0_tutorial_state()
             self.reset_game(0)
+            self._pending_music_crossfade = True
             self.state = "GAME"
             return
         self.screen.fill(C_MENU_BG)
@@ -2207,17 +2316,9 @@ class GameEngine:
 
         if click and is_hover_start:
             self.play_click()
-            # Chạy Level 0 tutorial nếu chưa từng thấy
-            if self.current_level == 1 and not getattr(self, 'has_seen_tutorial', False):
-                self.level_0_tutorial_active = True
-                self.level_0_step = 0
-                self.from_tutorial_practice = False
-                self._init_level_0_tutorial_state()
-                self.reset_game(0)
-                self.state = "GAME"
-            else:
-                self.wave_active = True
-                self.start_cat_loading("GAME")
+            self.wave_active = True
+            self._crossfade_on_game_start = True
+            self.start_cat_loading("GAME")
             pygame.time.delay(150)
 
     # ---------------------------------------------------------------- DICT
@@ -2235,135 +2336,135 @@ class GameEngine:
             next_state = getattr(self, 'prev_state', "MENU")
             self.state = next_state
             self.prev_state = "MENU"
-            # If returning to game, dismiss inspect popup so game resumes
             if next_state == "GAME":
                 self.selected_entity_on_map = None
             pygame.time.delay(200)
 
+        # Layout constants
+        LEFT_W = 440
+        PANEL_TOP = 70
+        ROW_H = 46
+        SECTION_GAP = 18
+        ICON_W = 36
 
-        pygame.draw.rect(self.screen, (25, 28, 40), (18, 70, 254, SCREEN_H-88), border_radius=12)
-        pygame.draw.rect(self.screen, (60, 65, 85), (18, 70, 254, SCREEN_H-88), width=2, border_radius=12)
-        y = 90
-        ICON_W = 28
-        NAME_X = 26 + ICON_W + 8
-        ROW_H = 36
+        # ── Left Panel ────────────────────────────────────────────────────────
+        pygame.draw.rect(self.screen, (25, 28, 40), (18, PANEL_TOP, LEFT_W - 18, SCREEN_H - PANEL_TOP - 18), border_radius=12)
+        pygame.draw.rect(self.screen, (60, 65, 85), (18, PANEL_TOP, LEFT_W - 18, SCREEN_H - PANEL_TOP - 18), width=2, border_radius=12)
+
+        y = PANEL_TOP + 20
         for section_name, section_color, items in [
             ("QUÂN BẠCH QUỐC", (255,100,100), ["Lurker","Drifter","Brute","Phantom","Ravager","Titan"]),
             ("VŨ KHÍ HẮC QUỐC",   (100,180,255), ["Ballista","Phalanx","Ignis","Kronos","Ares","Hephaestus","Thanatos"]),
         ]:
-            self.screen.blit(self.fonts['sm'].render(section_name, True, section_color), (30, y)); y+=28
+            sec_lbl = self.fonts['sm'].render(section_name, True, section_color)
+            self.screen.blit(sec_lbl, (30, y)); y += 30
             for name in items:
                 row_y = y
-                r = pygame.Rect(26, row_y, 236, ROW_H)
+                r = pygame.Rect(26, row_y, LEFT_W - 44, ROW_H)
                 sel = (name == self.dict_selected)
                 bg = (60, 100, 160) if sel else ((50, 60, 80) if r.collidepoint(mx,my) else (30, 35, 50))
                 pygame.draw.rect(self.screen, bg, r, border_radius=6)
-                if sel: pygame.draw.rect(self.screen, (100, 200, 255), r, width=2, border_radius=6)
-                # Draw in-game icon
-                icon_cx = 26 + ICON_W // 2
-                icon_cy = row_y + ROW_H // 2
-                draw_entity_shape(self.screen, name, icon_cx, icon_cy, 0)
-                # Draw name
-                self.screen.blit(self.fonts['sm'].render(name, True, (255,255,255) if sel else (180,180,180)), (NAME_X, row_y + (ROW_H - self.fonts['sm'].get_height()) // 2))
-                if click and r.collidepoint(mx, my): 
+                if sel:
+                    pygame.draw.rect(self.screen, (100, 200, 255), r, width=2, border_radius=6)
+                draw_entity_shape(self.screen, name, 26 + ICON_W // 2, row_y + ROW_H // 2, 0)
+                name_lbl = self.fonts['md'].render(name, True, (255,255,255) if sel else (180,180,180))
+                self.screen.blit(name_lbl, (26 + ICON_W + 10, row_y + (ROW_H - name_lbl.get_height()) // 2))
+                if click and r.collidepoint(mx, my):
                     self.play_click()
                     self.dict_selected = name
                     if hasattr(self, 'posters') and name in self.posters and self.posters[name] is None:
                         del self.posters[name]
                     pygame.time.delay(140)
                 y += ROW_H
-            y += 14
+            y += SECTION_GAP
 
+        # ── Right Panel ──────────────────────────────────────────────────────
         d = ENCYCLOPEDIA_DATA.get(self.dict_selected)
-        if d:
-            px = 288
-            box_rect = pygame.Rect(px, 70, SCREEN_W-px-18, SCREEN_H-88)
-            pygame.draw.rect(self.screen, (25, 28, 40), box_rect, border_radius=12)
-            pygame.draw.rect(self.screen, (60, 65, 85), box_rect, width=2, border_radius=12)
-            
-            name = self.dict_selected
-            
-            if not hasattr(self, 'posters'):
-                self.posters = {}
-                
-            # Use shared poster loader (no duplicate code)
-            poster = self.get_poster(name)
-            
-            poster_rect = pygame.Rect(px+30, 100, 300, 300)
-            pygame.draw.rect(self.screen, (15, 18, 25), poster_rect, border_radius=10)
-            
-            if poster:
-                self.screen.blit(poster, (px+30, 100))
-            else:
-                s1 = self.fonts['sm'].render("CHƯA CÓ POSTER", True, (100, 100, 100))
-                s2 = self.fonts['sm'].render(f"File mẫu: {name}.png", True, (80, 80, 80))
-                self.screen.blit(s1, (poster_rect.x + 150 - s1.get_width()//2, poster_rect.y + 130))
-                self.screen.blit(s2, (poster_rect.x + 150 - s2.get_width()//2, poster_rect.y + 160))
-                
-            rx = px + 360
-            # Render character name — use smaller font and wrap if too long to avoid overflow
-            name_text = d['name']
-            name_font = self.fonts['lg']  # Use lg (32px) instead of xl (48px) to prevent overflow
-            name_max_w = box_rect.w - 390 - 20  # available width
+        if not d:
+            return
+
+        rx = LEFT_W + 28
+        right_w = SCREEN_W - rx - 20
+        box_rect = pygame.Rect(rx, PANEL_TOP, right_w, SCREEN_H - PANEL_TOP - 18)
+        pygame.draw.rect(self.screen, (25, 28, 40), box_rect, border_radius=12)
+        pygame.draw.rect(self.screen, (60, 65, 85), box_rect, width=2, border_radius=12)
+
+        # Poster: top-right, 160x160
+        POSTER_SIZE = 160
+        poster_x = rx + right_w - POSTER_SIZE - 20
+        poster_rect = pygame.Rect(poster_x, PANEL_TOP + 16, POSTER_SIZE, POSTER_SIZE)
+        pygame.draw.rect(self.screen, (15, 18, 25), poster_rect, border_radius=10)
+        poster = self.get_poster(self.dict_selected)
+        if poster:
+            if not hasattr(self, '_dict_posters'):
+                self._dict_posters = {}
+            if self.dict_selected not in self._dict_posters:
+                self._dict_posters[self.dict_selected] = pygame.transform.smoothscale(poster, (POSTER_SIZE, POSTER_SIZE))
+            self.screen.blit(self._dict_posters[self.dict_selected], poster_rect.topleft)
+        else:
+            draw_entity_shape(self.screen, self.dict_selected, poster_rect.centerx, poster_rect.centery, 0)
+            s = self.fonts['sm'].render(f"{self.dict_selected}.png", True, (80, 80, 80))
+            self.screen.blit(s, (poster_rect.centerx - s.get_width()//2, poster_rect.bottom + 6))
+
+        # Text content (left side of right panel, beside poster)
+        tx = rx + 20
+        ty = PANEL_TOP + 20
+        line_h = 28
+
+        # Name
+        name_text = d['name']
+        name_font = self.fonts['lg']
+        name_max_w = right_w - POSTER_SIZE - 50
+        name_surf = name_font.render(name_text, True, (255, 220, 100))
+        if name_surf.get_width() > name_max_w:
+            name_font = self.fonts['md']
             name_surf = name_font.render(name_text, True, (255, 220, 100))
-            if name_surf.get_width() > name_max_w:
-                # Try xs-medium font if still too wide
-                name_font = self.fonts['md']
-                name_surf = name_font.render(name_text, True, (255, 220, 100))
-            if name_surf.get_width() > name_max_w:
-                # Last resort: wrap onto two lines
-                wrapped = wrap_text(name_text, self.fonts['md'], name_max_w)
-                ny = 90
-                for wline in wrapped:
-                    ws = self.fonts['md'].render(wline, True, (255, 220, 100))
-                    self.screen.blit(ws, (rx, ny))
-                    ny += 26
-            else:
-                self.screen.blit(name_surf, (rx, 90))
-            
-            # ── Unlock level badge ───────────────────────────────────
-            # Build tower_unlock_lv lookup: {tower_name: first level it appears}
-            tower_unlock_lv = {}
-            for lv in sorted(TOWERS_BY_LEVEL.keys()):
-                for t in TOWERS_BY_LEVEL[lv]:
-                    if t not in tower_unlock_lv:
-                        tower_unlock_lv[t] = lv
-            # Build monster_unlock_lv lookup: {monster_name: first level it appears in a wave}
-            monster_unlock_lv = {}
-            for lv in sorted(WAVES_BY_LEVEL.keys()):
-                for m in WAVES_BY_LEVEL[lv]:
-                    if m not in monster_unlock_lv:
-                        monster_unlock_lv[m] = lv
-            unlock_lv = tower_unlock_lv.get(name) or monster_unlock_lv.get(name)
-            if unlock_lv:
-                badge_txt = f"🔓 Xuất hiện từ Level {unlock_lv}"
-                badge_col = (80, 220, 140)
-            else:
-                badge_txt = "🔓 Level 1"
-                badge_col = (80, 200, 120)
-            badge_surf = self.fonts['sm'].render(badge_txt, True, badge_col)
-            badge_bg = pygame.Rect(rx, 138, badge_surf.get_width() + 20, 28)
-            pygame.draw.rect(self.screen, (20, 50, 30), badge_bg, border_radius=5)
-            pygame.draw.rect(self.screen, badge_col, badge_bg, width=1, border_radius=5)
-            self.screen.blit(badge_surf, (badge_bg.x + 10, badge_bg.y + 5))
-            # ──────────────────────────────────────────────────────────
-            
-            stats_bg = pygame.Rect(rx, 180, box_rect.w - 390, 40)
-            pygame.draw.rect(self.screen, (40, 45, 60), stats_bg, border_radius=6)
-            self.screen.blit(self.fonts['sm'].render(d['stats'], True, (150, 255, 150)), (rx+15, 190))
-            
-            self.screen.blit(self.fonts['lg'].render("TIỂU SỬ", True, (180, 180, 200)), (rx, 240))
-            lore_lines = wrap_text(d['lore'], self.fonts['md'], box_rect.w - 390)
-            ly = 280
-            for ln in lore_lines:
-                self.screen.blit(self.fonts['md'].render(ln, True, (200, 210, 220)), (rx, ly)); ly += 32
-                
-            icon_y = max(ly + 40, 420)
-            self.screen.blit(self.fonts['lg'].render("BIỂU TƯỢNG IN-GAME", True, (180, 180, 200)), (rx, icon_y))
-            icon_bg = pygame.Rect(rx, icon_y + 45, 80, 80)
-            pygame.draw.rect(self.screen, (20, 20, 30), icon_bg, border_radius=10)
-            pygame.draw.rect(self.screen, (80, 80, 100), icon_bg, width=2, border_radius=10)
-            self.draw_entity_icon(name, rx + 40, icon_y + 85)
+        self.screen.blit(name_surf, (tx, ty)); ty += line_h + 6
+
+        # Unlock badge
+        tower_unlock_lv = {}
+        for lv in sorted(TOWERS_BY_LEVEL.keys()):
+            for t in TOWERS_BY_LEVEL[lv]:
+                if t not in tower_unlock_lv:
+                    tower_unlock_lv[t] = lv
+        monster_unlock_lv = {}
+        for lv in sorted(WAVES_BY_LEVEL.keys()):
+            for m in WAVES_BY_LEVEL[lv]:
+                if m not in monster_unlock_lv:
+                    monster_unlock_lv[m] = lv
+        unlock_lv = tower_unlock_lv.get(self.dict_selected) or monster_unlock_lv.get(self.dict_selected)
+        badge_txt = f">> Xuat hien tu Level {unlock_lv}" if unlock_lv else ">> Level 1"
+        badge_col = (80, 220, 140)
+        badge_surf = self.fonts['sm'].render(badge_txt, True, badge_col)
+        badge_bg = pygame.Rect(tx, ty, badge_surf.get_width() + 20, 26)
+        pygame.draw.rect(self.screen, (20, 50, 30), badge_bg, border_radius=5)
+        pygame.draw.rect(self.screen, badge_col, badge_bg, width=1, border_radius=5)
+        self.screen.blit(badge_surf, (badge_bg.x + 10, badge_bg.y + 4))
+        ty += 34
+
+        # Stats
+        stats_bg = pygame.Rect(tx, ty, right_w - POSTER_SIZE - 50, 36)
+        pygame.draw.rect(self.screen, (40, 45, 60), stats_bg, border_radius=6)
+        self.screen.blit(self.fonts['sm'].render(d['stats'], True, (150, 255, 150)), (tx + 12, ty + 9))
+        ty += 44
+
+        # Lore
+        lore_header = self.fonts['md'].render("TIỂU SỬ", True, (180, 180, 200))
+        self.screen.blit(lore_header, (tx, ty)); ty += line_h + 4
+        lore_lines = wrap_text(d['lore'], self.fonts['md'], right_w - POSTER_SIZE - 50)
+        for ln in lore_lines:
+            self.screen.blit(self.fonts['md'].render(ln, True, (200, 210, 220)), (tx, ty)); ty += line_h
+            if ty > box_rect.bottom - 120:
+                break
+
+        # Icon at bottom
+        icon_y = box_rect.bottom - 110
+        icon_lbl = self.fonts['md'].render("BIỂU TƯỢNG IN-GAME", True, (180, 180, 200))
+        self.screen.blit(icon_lbl, (tx, icon_y)); icon_y += line_h + 4
+        icon_bg = pygame.Rect(tx, icon_y, 80, 80)
+        pygame.draw.rect(self.screen, (20, 20, 30), icon_bg, border_radius=10)
+        pygame.draw.rect(self.screen, (80, 80, 100), icon_bg, width=2, border_radius=10)
+        self.draw_entity_icon(self.dict_selected, tx + 40, icon_y + 40)
 
 
     # --------------------------------------------------------------- GAME DRAW
@@ -2476,7 +2577,7 @@ class GameEngine:
             self.screen.blit(self.heart_sidebar_icon, (SB+12, 48))
             self.screen.blit(self.fonts['lg'].render(f"{self.gold}", True, (255, 100, 180)), (SB+42, 46))
         else:
-            self.screen.blit(self.fonts['lg'].render(f"❤️ {self.gold}", True, (255, 100, 180)), (SB+12, 46))
+            self.screen.blit(self.fonts['lg'].render(f"[♥] {self.gold}", True, (255, 100, 180)), (SB+12, 46))
         hp_c = (0,220,0) if self.base.hp > 8 else (255,50,50)
         self.screen.blit(self.fonts['sm'].render(f"HP: {int(self.base.hp)}/{self.base.max_hp}", True, hp_c), (SB+12, 84))
 
@@ -2569,7 +2670,7 @@ class GameEngine:
                 self.screen.blit(self.heart_card_icon, (SB+60, y+32))
                 self.screen.blit(self.fonts['sm'].render(f"{cost}", True, heart_col), (SB+80, y+30))
             else:
-                self.screen.blit(self.fonts['sm'].render(f"❤️ {cost}", True, heart_col), (SB+60, y+30))
+                self.screen.blit(self.fonts['sm'].render(f"[♥] {cost}", True, heart_col), (SB+60, y+30))
 
             # Selected tick mark
             if is_selected:
@@ -2900,7 +3001,9 @@ class GameEngine:
             if click and is_hover:
                 self.play_click()
                 pygame.time.delay(200)
-                if action == "RESUME": self.state = "GAME"
+                if action == "RESUME":
+                    self._pending_music_crossfade = False
+                    self.state = "GAME"
                 elif action == "DICT": self.state = "DICT"; self.prev_state = "PAUSE"
                 elif action == "SETTINGS": 
                     self.settings_prev_state = "PAUSE"
@@ -2950,7 +3053,7 @@ class GameEngine:
             if m.hp <= 0:
                 reward = getattr(m, 'reward', 10)
                 self.gold += reward
-                self.floating_texts.append(FloatingText(m.pixel_pos[0], m.pixel_pos[1], f"+{reward} ❤️", (255, 100, 180)))
+                self.floating_texts.append(FloatingText(m.pixel_pos[0], m.pixel_pos[1], f"+{reward} [♥]", (255, 100, 180)))
                 m.alive = False
             if arrived and m.alive:
                 if self.base.take_damage(m.damage_to_base):
@@ -3160,8 +3263,9 @@ class GameEngine:
                     self.state = "SETTINGS" if getattr(self, 'from_practice', False) else "MENU"
                 return
             if event.key == pygame.K_r:     self.reset_game(self.current_level)
-            if event.key == pygame.K_ESCAPE:
+                if event.key == pygame.K_ESCAPE:
                 self.play_click()
+                self._in_gameplay = False
                 self.state = "PAUSE"
                 
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -3665,6 +3769,12 @@ class GameEngine:
             elif self.state == "STORY":    self.draw_story()
             elif self.state == "DICT":     self.draw_dict()
             elif self.state == "GAME":
+                # Trigger music crossfade when entering GAME state
+                if getattr(self, '_pending_music_crossfade', False) or getattr(self, '_crossfade_on_game_start', False):
+                    self._pending_music_crossfade = False
+                    self._crossfade_on_game_start = False
+                    self._in_gameplay = True
+                    self.start_song3_crossfade()
                 self.update_game(dt)
                 self.draw_game()
                 self.draw_level_0_tutorial()
@@ -3805,6 +3915,9 @@ class GameEngine:
                 
             # Draw Guide Popup Overlay
             self.draw_guide_popup()
+            
+            # Crossfade background music if active
+            self.update_music_crossfade(dt * 1000)
             
             pygame.display.flip()
 
