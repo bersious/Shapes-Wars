@@ -517,6 +517,47 @@ class FloatingText:
         surface.blit(surf, (int(self.x), int(self.y)))
 
 
+def draw_heart_shape(surface, cx, cy, size, color):
+    """Draw a filled heart shape centered at (cx, cy)."""
+    top = cy - size // 2
+    mid_y = cy
+    pts = [
+        (cx, mid_y + size // 3),
+        (cx - size // 2, mid_y - size // 6),
+        (cx - size // 2, top),
+        (cx, top + size // 4),
+        (cx + size // 2, top),
+        (cx + size // 2, mid_y - size // 6),
+    ]
+    if len(pts) >= 3:
+        pygame.draw.polygon(surface, color, pts)
+
+
+class HeartDrop:
+    def __init__(self, x, y):
+        self.x = float(x)
+        self.y = float(y)
+        self.vy = -120.0  # initial upward velocity
+        self.gravity = 400.0  # pixels/s^2
+        self.life = 1.2  # seconds
+        self.max_life = 1.2
+        self.size = 14
+
+    def update(self, dt):
+        self.vy += self.gravity * dt
+        self.y += self.vy * dt
+        self.life -= dt
+
+    def draw(self, surface):
+        alpha = max(0, int((self.life / self.max_life) * 255))
+        if alpha <= 0:
+            return
+        heart_surf = pygame.Surface((self.size + 4, self.size + 4), pygame.SRCALPHA)
+        draw_heart_shape(heart_surf, (self.size + 4) // 2, (self.size + 4) // 2, self.size, (255, 80, 140))
+        heart_surf.set_alpha(alpha)
+        surface.blit(heart_surf, (int(self.x - self.size // 2 - 2), int(self.y - self.size // 2 - 2)))
+
+
 class Bullet:
     def __init__(self, start_pos, target, tw_type):
         self.x, self.y = float(start_pos[0]), float(start_pos[1])
@@ -861,16 +902,25 @@ class GameEngine:
         except:
             self.outro_bg = None
 
-        # Load in-game currency icon (heart.png)
+        # Load in-game currency icon (heart.png) with programmatic fallback
         try:
             self.heart_img = pygame.image.load("assets/ui/heart.png").convert_alpha()
+        except:
+            # Programmatic heart fallback
+            hs = pygame.Surface((32, 32), pygame.SRCALPHA)
+            cx, cy, size = 16, 16, 14
+            pts = [(cx, cy + size // 3 + 2), (cx - size // 2, cy - size // 6),
+                   (cx - size // 2, cy - size), (cx, cy - size // 4),
+                   (cx + size // 2, cy - size), (cx + size // 2, cy - size // 6)]
+            pygame.draw.polygon(hs, (255, 80, 140), pts)
+            pygame.draw.polygon(hs, (255, 40, 100), pts, 1)
+            self.heart_img = hs
+        try:
             self.heart_sidebar_icon = pygame.transform.smoothscale(self.heart_img, (24, 24))
             self.heart_card_icon = pygame.transform.smoothscale(self.heart_img, (16, 16))
-        except Exception as e:
-            print(f"Error loading heart.png: {e}")
-            self.heart_img = None
-            self.heart_sidebar_icon = None
-            self.heart_card_icon = None
+        except:
+            self.heart_sidebar_icon = self.heart_img
+            self.heart_card_icon = self.heart_img
                 
         # --- Load loading cat ---
         self.loading_cat_frames = []
@@ -978,6 +1028,7 @@ class GameEngine:
         self.bullets = []
         self.phalanx_spikes = []
         self.floating_texts = []
+        self.heart_drops = []
         for m in WAVES_BY_LEVEL.get(level, []):
             self.wave_queue.enqueue(m)
 
@@ -1508,9 +1559,10 @@ class GameEngine:
                     self.unlocked_level = 1
                     self.has_selected_faction = False
                     self.has_seen_intro = False
+                    self.has_seen_tutorial = False
                     self.has_beaten_game = False
                     self.ending_unlocked_by_code = False
-                    save_progress(self.unlocked_level, self.has_selected_faction, self.has_seen_intro, getattr(self, 'has_seen_tutorial', False), False)
+                    save_progress(self.unlocked_level, self.has_selected_faction, self.has_seen_intro, False, False)
                     self.state = "MENU"
                 elif action == "ENDING":
                     if is_ending_unlocked:
@@ -2530,6 +2582,7 @@ class GameEngine:
 
         for b in self.bullets:        b.draw(self.screen)
         for ft in self.floating_texts: ft.draw(self.screen, self.fonts['sm'])
+        for hd in getattr(self, 'heart_drops', []): hd.draw(self.screen)
 
         # Draw Phalanx spikes
         for coords, tmr in getattr(self, 'phalanx_spikes', []):
@@ -3054,6 +3107,7 @@ class GameEngine:
                 reward = getattr(m, 'reward', 10)
                 self.gold += reward
                 self.floating_texts.append(FloatingText(m.pixel_pos[0], m.pixel_pos[1], f"+{reward} [♥]", (255, 100, 180)))
+                self.heart_drops.append(HeartDrop(m.pixel_pos[0], m.pixel_pos[1]))
                 m.alive = False
             if arrived and m.alive:
                 if self.base.take_damage(m.damage_to_base):
@@ -3245,6 +3299,9 @@ class GameEngine:
         for ft in self.floating_texts[:]:
             ft.update(dt)
             if ft.life <= 0: self.floating_texts.remove(ft)
+        for hd in getattr(self, 'heart_drops', [])[:]:
+            hd.update(dt)
+            if hd.life <= 0: self.heart_drops.remove(hd)
 
         # Tick range-show timers
         self.range_show = [(tw, tmr - dt) for tw, tmr in getattr(self, 'range_show', []) if tmr - dt > 0]
@@ -3263,7 +3320,7 @@ class GameEngine:
                     self.state = "SETTINGS" if getattr(self, 'from_practice', False) else "MENU"
                 return
             if event.key == pygame.K_r:     self.reset_game(self.current_level)
-                if event.key == pygame.K_ESCAPE:
+            if event.key == pygame.K_ESCAPE:
                 self.play_click()
                 self._in_gameplay = False
                 self.state = "PAUSE"
