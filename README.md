@@ -38,11 +38,11 @@ Một game Tower Defense đậm chất ?, được viết hoàn toàn bằng Pyt
 | | |
 |:--:|:--:|
 | ![Menu](assets/demo/01-menu.png) | ![Gameplay](assets/demo/02-gameplay.png) |
-| *Menu chính* | *Gameplay* |
+| *Menu chính* | *Ending* |
 | ![Battle](assets/demo/03-battle.png) | ![Tower Select](assets/demo/04-tower-select.png) |
-| *Chiến đấu* | *Chọn tháp* |
+| *Gameplay* | *Characters* |
 | ![Wave Preview](assets/demo/05-wave-preview.png) | ![Victory](assets/demo/06-victory.png) |
-| *Xem trước wave* | *Chiến thắng* |
+| *Story* | *Outro* |
 
 ---
 
