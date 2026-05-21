@@ -66,8 +66,13 @@ class AudioController:
         self._music_vol = 0.5
         self._sfx_vol = 0.6
 
-        # ── Menu music ───────────────────────────────────────────
+        # ── Ambient music flag (bgm + song3 alternation) ─────────
+        self._ambient_music_on = False
+        
+        # ── Menu music playlist (alternating bgm <-> song3) ──────
         self._menu_music_on = False
+        self._menu_playlist = ["assets/audio/bgm.mp3", "assets/audio/song3.mp3"]
+        self._menu_playlist_idx = 0
 
         # ── Gameplay playlist (alternating bgm <-> song3) ─────────
         self._gameplay_on = False
@@ -77,7 +82,7 @@ class AudioController:
         # ── SFX ───────────────────────────────────────────────────
         self._click_sfx = None
 
-        # ── State: 'idle' | 'menu' | 'gameplay' | 'scene' ─────────
+        # ── State: 'idle' | 'menu' | 'gameplay' | 'scene' | 'ambient' ─────
         self._state = 'idle'
 
     # ── Init ──────────────────────────────────────────────────────
@@ -122,8 +127,11 @@ class AudioController:
 
     # ── Music helpers ─────────────────────────────────────────────
 
-    def _load_and_play(self, path: str, loops: int = -1, fade_ms: int = 0):
-        """Load a track and start playing. Stops whatever is currently playing."""
+    def _load_and_play(self, path: str, loops: int = 0, fade_ms: int = 0):
+        """Load a track and start playing. Stops whatever is currently playing.
+        For playlist: loops=0 (play once), queue() handles next track.
+        For scene: loops=-1 (loop forever).
+        """
         try:
             pygame.mixer.music.load(path)
             pygame.mixer.music.play(loops, fade_ms=fade_ms)
@@ -143,6 +151,7 @@ class AudioController:
         pygame.mixer.music.stop()
         self._menu_music_on = False
         self._gameplay_on = False
+        self._ambient_music_on = False
         self._state = 'idle'
 
     # ── Logo / Intro / Outro scene music ─────────────────────────
@@ -163,13 +172,24 @@ class AudioController:
     # ── Scene music ───────────────────────────────────────────────
 
     def play_menu_music(self):
-        """Menu: loops bgm.mp3 forever. Seamless — does NOT stop gameplay music."""
-        if self._state == 'menu':
-            return  # Already playing menu music
+        """Menu: alternates bgm.mp3 <-> song3.mp3. Seamless transition from gameplay."""
+        # If already playing menu or gameplay music (same playlist), just update flags
+        if self._ambient_music_on:
+            self._state = 'menu'
+            self._menu_music_on = True
+            self._gameplay_on = False
+            return  # Don't reset music, just update flags
+        
+        # First time starting menu music
         self._state = 'menu'
         self._menu_music_on = True
         self._gameplay_on = False
-        self._load_and_play("assets/audio/bgm.mp3", loops=-1)
+        self._ambient_music_on = True
+        self._menu_playlist_idx = 0
+        cur = self._menu_playlist[self._menu_playlist_idx]
+        nxt = self._menu_playlist[(self._menu_playlist_idx + 1) % len(self._menu_playlist)]
+        self._load_and_play(cur)
+        self._queue_next(nxt)
 
     def play_ending_music(self):
         """Win / ending scene: loops song2.mp3."""
@@ -199,13 +219,20 @@ class AudioController:
     def play_gameplay_music(self):
         """
         Start the gameplay playlist (bgm.mp3 <-> song3.mp3 loop).
-        Does NOT stop menu music — switches seamlessly between scene types.
+        Seamless transition from menu music (same playlist).
         """
-        if self._state == 'gameplay' and self._gameplay_on:
-            return  # Already in gameplay mode
+        # If already playing menu or gameplay music (same playlist), just update flags
+        if self._ambient_music_on:
+            self._state = 'gameplay'
+            self._gameplay_on = True
+            self._menu_music_on = False
+            return  # Don't reset music, just update flags
+        
+        # First time starting gameplay music
         self._state = 'gameplay'
         self._gameplay_on = True
         self._menu_music_on = False
+        self._ambient_music_on = True
         self._playlist_idx = 0
         cur = self._playlist[self._playlist_idx]
         nxt = self._playlist[(self._playlist_idx + 1) % len(self._playlist)]
@@ -222,24 +249,38 @@ class AudioController:
         Call once per frame with list of events from main loop.
         `events` is the list from pygame.event.get()
         `dt_ms` is the time since last frame in milliseconds (default 16).
-        Checks for MUSIC_END events and advances the playlist.
+        Checks for MUSIC_END events and advances the playlist (menu or gameplay).
+        Ambient music continues regardless of UI state (DICT, SETTINGS, PAUSE, etc).
         """
-        if not self._gameplay_on:
+        if not self._ambient_music_on:
             return
 
         for event in events:
             if event.type == _MUSIC_END:
-                # Current track finished → advance to next
-                self._playlist_idx = (self._playlist_idx + 1) % len(self._playlist)
-                cur = self._playlist[self._playlist_idx]
-                nxt = self._playlist[(self._playlist_idx + 1) % len(self._playlist)]
-                try:
-                    pygame.mixer.music.load(cur)
-                    pygame.mixer.music.play()
-                    pygame.mixer.music.set_volume(self._effective_vol())
-                    pygame.mixer.music.queue(nxt)
-                except Exception as e:
-                    print(f"[LOG] Audio playlist advance failed: {e}", flush=True)
+                # Gameplay playlist: advance to next track
+                if self._gameplay_on:
+                    self._playlist_idx = (self._playlist_idx + 1) % len(self._playlist)
+                    cur = self._playlist[self._playlist_idx]
+                    nxt = self._playlist[(self._playlist_idx + 1) % len(self._playlist)]
+                    try:
+                        pygame.mixer.music.load(cur)
+                        pygame.mixer.music.play()
+                        pygame.mixer.music.set_volume(self._effective_vol())
+                        pygame.mixer.music.queue(nxt)
+                    except Exception as e:
+                        print(f"[LOG] Audio playlist advance failed: {e}", flush=True)
+                # Menu playlist: advance to next track
+                elif self._menu_music_on:
+                    self._menu_playlist_idx = (self._menu_playlist_idx + 1) % len(self._menu_playlist)
+                    cur = self._menu_playlist[self._menu_playlist_idx]
+                    nxt = self._menu_playlist[(self._menu_playlist_idx + 1) % len(self._menu_playlist)]
+                    try:
+                        pygame.mixer.music.load(cur)
+                        pygame.mixer.music.play()
+                        pygame.mixer.music.set_volume(self._effective_vol())
+                        pygame.mixer.music.queue(nxt)
+                    except Exception as e:
+                        print(f"[LOG] Audio menu playlist advance failed: {e}", flush=True)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -505,7 +546,6 @@ LEVEL_0_GUIDE_STEPS = [
 
 FINAL_STORY_TEXTS = [
     "Sau nhiều lần tấn công thất bại dồn dập, vua NamDinh đã phải gánh chịu làn sóng phản đối vô cùng mạnh mẽ từ chính người dân Bạch Quốc. Cuộc chiến vô nghĩa kéo dài chỉ mang lại nỗi đau thương cùng cực cho cả hai bên.",
-    "Lúc này, quân Kháng chiến Bạch Quốc trỗi dậy mạnh mẽ. Họ đã bắt giữ vua NamDinh và trao trả ông cho phía Hắc Quốc xử tử. Đây là bước đi quyết định nhằm cầu hòa và chấm dứt chiến tranh giữa hai quốc gia.",
     "Lúc này, quân Kháng chiến Bạch Quốc trỗi dậy mạnh mẽ. Họ đã bắt giữ vua NamDinh và trao trả ông cho phía Hắc Quốc xử tử. Đây là bước đi quyết định nhằm cầu hòa và chấm dứt chiến tranh giữa hai quốc gia.",
     "Người đứng đầu quân Kháng chiến là tướng Perseus chính thức lên ngôi vua mới của Bạch Quốc. Ông tích cực viện trợ những công nghệ ánh sáng tiên tiến nhất để hỗ trợ phía Hắc Quốc khôi phục và xây dựng lại vương quốc phồn vinh.",
     "Từ đây, khói lửa chiến tranh hoàn toàn lùi xa. Hai vương quốc chính thức đạt được sự toàn vẹn và thịnh trị lâu dài, khi cả ánh sáng và bóng tối từ nay đã có thể học cách thấu hiểu, tôn trọng và chung sống hòa bình bên nhau."
@@ -1167,14 +1207,41 @@ class GameEngine:
             self.wave_queue.enqueue(m)
 
     def _spawn_level_0_monster(self):
-        """Spawn a Lurker toward a random placed tower's grid cell (level 0 tutorial)."""
+        """Spawn a Lurker toward a random placed tower's grid cell (level 0 tutorial).
+        Quái đi đến ô kề bên tháp (vì ô tháp bị grid=1 chặn), rồi chết khi đến nơi."""
         _dbg_log("H3", "H3: _spawn_level_0_monster CALLED")
         if not self.towers:
             _dbg_log("H3", "H3: no towers, returning")
             return
+
+        # Chọn tháp ngẫu nhiên, tìm ô kề bên tháp để quái đi đến
         target_tower = random.choice(list(self.towers))
         tr, tc = target_tower.grid_pos
-        # Only spawn Lurker (weakest monster) for tutorial
+
+        # Tìm ô kề bên tháp (trống, đi được)
+        adjacent = [(tr-1,tc),(tr+1,tc),(tr,tc-1),(tr,tc+1)]
+        random.shuffle(adjacent)
+        dest = None
+        for ar, ac in adjacent:
+            if 0 <= ar < GRID_ROWS and 0 <= ac < GRID_COLS and self.grid[ar][ac] == 0:
+                dest = (ar, ac)
+                break
+
+        # Nếu không có ô kề bên trống, thử tìm ô gần nhất trong bán kính 2
+        if dest is None:
+            for dr in range(-2, 3):
+                for dc in range(-2, 3):
+                    ar, ac = tr + dr, tc + dc
+                    if 0 <= ar < GRID_ROWS and 0 <= ac < GRID_COLS and self.grid[ar][ac] == 0:
+                        dest = (ar, ac)
+                        break
+                if dest:
+                    break
+
+        # Fallback cuối: đến BASE
+        if dest is None:
+            dest = BASE_POS
+
         m_type = "Lurker"
         m_class = MONSTER_REGISTRY[m_type]
         m_obj = m_class(SPAWN_POS, BASE_POS)
@@ -1183,15 +1250,18 @@ class GameEngine:
             SPAWN_POS[0] * CELL_SIZE + CELL_SIZE // 2
         ]
         m_obj.grid_ref = self.grid
-        alt_path = bfs_find_path(self.grid, SPAWN_POS, (tr, tc))
-        if alt_path:
-            m_obj.path = alt_path
+
+        path_to_tower = bfs_find_path(self.grid, SPAWN_POS, dest)
+        if path_to_tower:
+            m_obj.path = path_to_tower
             m_obj.level_0_target_tower = target_tower
-            _dbg_log("H5", f"H5: path found to tower cell ({tr},{tc}), len={len(alt_path)}")
+            m_obj.level_0_dest_cell = dest
+            _dbg_log("H5", f"H5: path to adjacent cell {dest} (tower at ({tr},{tc})), len={len(path_to_tower)}")
         else:
-            # Fallback to base if tower path blocked
             m_obj.path = bfs_find_path(self.grid, SPAWN_POS, BASE_POS)
-            _dbg_log("H5", "H5: no path to tower, fallback to BASE")
+            m_obj.level_0_target_tower = None
+            m_obj.level_0_dest_cell = None
+            _dbg_log("H5", "H5: no path to adjacent cell, fallback to BASE")
         m_obj.path_index = 0
         self.monsters.append(m_obj)
         _dbg_log("H3", f"H3: spawned Lurker, path_len={len(m_obj.path)}, total_monsters={len(self.monsters)}")
@@ -1380,6 +1450,7 @@ class GameEngine:
                         self._init_level_0_tutorial_state()
                         self.reset_game(0)
                         self.state = "GAME"
+                        self.audio.play_gameplay_music()
                     else:
 
                         self.state = "LEVEL_SELECT"
@@ -1597,7 +1668,7 @@ class GameEngine:
         self.screen.blit(self.fonts['md'].render("TRỞ VỀ", True, C_TEXT), (back.x+14, back.y+8))
         if click and back.collidepoint(mx, my):
             self.play_click()
-            self.state = "MENU"; self.audio.stop_music(); self.audio.play_menu_music(); pygame.time.delay(200)
+            self.state = "MENU"; self.audio.play_menu_music(); pygame.time.delay(200)
 
     def draw_settings(self):
         # Draw background image dimmed
@@ -1753,6 +1824,7 @@ class GameEngine:
                     self._init_level_0_tutorial_state()
                     self.reset_game(0)
                     self.state = "GAME"
+                    self.audio.play_gameplay_music()
                 pygame.time.delay(200)
                 
         # --- Back button in Settings ---
@@ -1877,6 +1949,10 @@ class GameEngine:
         if self.outro_scroll_y < -total_height:
             self.state = "MENU"
             self.audio.play_menu_music()
+        elif getattr(self, 'outro_skippable', False) is False:
+            # Allow skip after 40% scrolled
+            if self.outro_scroll_y < SCREEN_H - total_height * 0.4:
+                self.outro_skippable = True
 
         # 5. Skip button (if skippable)
         if getattr(self, 'outro_skippable', False):
@@ -1925,7 +2001,7 @@ class GameEngine:
                 "title": "Cơ Chế Cốt Lõi",
                 "items": [
                     ("Xây tháp", "Chọn tháp ở cột VŨ KHÍ bên phải, rồi click ô trống trên bản đồ. Tháp tự tấn công quái trong tầm.", (0, 230, 255)),
-                    ("TIM [♥]", "Tien dung mua va nang cap thap. Nhan them Tim khi tieu diet quai Bach Quoc.", (255, 90, 120)),
+                    ("TIM [♥]", "Tiền dùng mua và nâng cấp tháp. Nhận thêm Tim khi tiêu diệt quái Bạch Quốc.", (255, 90, 120)),
                     ("Đường đi (BFS)", "Quái luôn tìm đường ngắn nhất tới Thành. Không được chặn kín mọi lối đi.", (100, 255, 120)),
                     ("Nâng cấp", "Chuột phải vào tháp đã xây để nâng cấp (tăng sát thương).", (255, 200, 60)),
                 ],
@@ -2201,13 +2277,88 @@ class GameEngine:
                                      draw_g.centery - guide_lbl.get_height() // 2))
         if click and is_hover_guide:
             self.play_click()
-            self.level_0_tutorial_active = True
-            self.level_0_step = 0
-            self.from_tutorial_practice = False
-            self._init_level_0_tutorial_state()
-            self.reset_game(0)
-            self.state = "GAME"
-            pygame.time.delay(200)
+            # #region debug log
+            import datetime, os, json
+            _LOG_PATH = os.path.join(os.path.dirname(__file__), "debug-c56d64.log")
+            try:
+                with open(_LOG_PATH, "a", encoding="utf-8") as f:
+                    f.write(json.dumps({
+                        "id": f"guide_{datetime.datetime.now().timestamp():.0f}",
+                        "timestamp": int(datetime.datetime.now().timestamp() * 1000),
+                        "message": "GUIDE BTN CLICKED",
+                        "data": {
+                            "state_before": self.state,
+                            "level_bgs_keys": list(getattr(self, 'level_bgs', {}).keys()),
+                            "level_bgs_0": getattr(self, 'level_bgs', {}).get(0),
+                            "has_unlocked_level": hasattr(self, 'unlocked_level'),
+                            "unlocked_level": getattr(self, 'unlocked_level', None),
+                            "has_tutorial": hasattr(self, 'has_seen_tutorial'),
+                            "tutorial_done": getattr(self, 'has_seen_tutorial', None),
+                        },
+                        "runId": "run1",
+                        "hypothesisId": "A"
+                    }, ensure_ascii=False) + "\n")
+            except: pass
+            # #endregion
+            try:
+                self.level_0_tutorial_active = True
+                self.level_0_step = 0
+                self.from_tutorial_practice = False
+                self._init_level_0_tutorial_state()
+                # #region debug log
+                try:
+                    with open(_LOG_PATH, "a", encoding="utf-8") as f:
+                        f.write(json.dumps({
+                            "id": f"guide_{datetime.datetime.now().timestamp():.0f}",
+                            "timestamp": int(datetime.datetime.now().timestamp() * 1000),
+                            "message": "BEFORE reset_game(0)",
+                            "data": {"has_base": hasattr(self, 'base'), "base_hp": getattr(self, 'base', None)},
+                            "runId": "run1",
+                            "hypothesisId": "A"
+                        }, ensure_ascii=False) + "\n")
+                except: pass
+                # #endregion
+                self.reset_game(0)
+                # #region debug log
+                try:
+                    with open(_LOG_PATH, "a", encoding="utf-8") as f:
+                        f.write(json.dumps({
+                            "id": f"guide_{datetime.datetime.now().timestamp():.0f}",
+                            "timestamp": int(datetime.datetime.now().timestamp() * 1000),
+                            "message": "AFTER reset_game(0)",
+                            "data": {
+                                "state_after": self.state,
+                                "current_level": getattr(self, 'current_level', None),
+                                "is_level_0": getattr(self, 'is_level_0', None),
+                                "grid_exists": hasattr(self, 'grid'),
+                                "grid_rows": len(getattr(self, 'grid', [[]])),
+                                "has_monsters": hasattr(self, 'monsters'),
+                                "monsters_type": type(getattr(self, 'monsters', None)).__name__,
+                                "towers": len(getattr(self, 'towers', [])),
+                            },
+                            "runId": "run1",
+                            "hypothesisId": "A"
+                        }, ensure_ascii=False) + "\n")
+                except: pass
+                # #endregion
+                self.state = "GAME"
+                self.audio.play_gameplay_music()
+                pygame.time.delay(200)
+            except Exception as e:
+                # #region debug log
+                try:
+                    with open(_LOG_PATH, "a", encoding="utf-8") as f:
+                        f.write(json.dumps({
+                            "id": f"guide_{datetime.datetime.now().timestamp():.0f}",
+                            "timestamp": int(datetime.datetime.now().timestamp() * 1000),
+                            "message": "GUIDE BTN CRASH",
+                            "data": {"error": str(e)},
+                            "runId": "run1",
+                            "hypothesisId": "A"
+                        }, ensure_ascii=False) + "\n")
+                except: pass
+                # #endregion
+                pass
 
         for i in range(1, 11):
             x = 240 + ((i-1)%5)*200
@@ -2298,6 +2449,7 @@ class GameEngine:
                         self._init_level_0_tutorial_state()
                         self.reset_game(0)
                         self.state = "GAME"
+                        self.audio.play_gameplay_music()
                     else:
                         # Normal level start (story then game)
                         self.reset_game(i)
@@ -2322,7 +2474,7 @@ class GameEngine:
         self.screen.blit(self.fonts['md'].render("TRỞ VỀ", True, C_TEXT), (back.x+14, back.y+8))
         if click and is_back_hover:
             self.play_click()
-            self.state = "MENU"; self.audio.stop_music(); self.audio.play_menu_music(); pygame.time.delay(200)
+            self.state = "MENU"; self.audio.play_menu_music(); pygame.time.delay(200)
 
     # --------------------------------------------------------------- STORY
     def get_new_elements_for_level(self, level):
@@ -2352,6 +2504,7 @@ class GameEngine:
             self._init_level_0_tutorial_state()
             self.reset_game(0)
             self.state = "GAME"
+            self.audio.play_gameplay_music()
             return
         self.screen.fill(C_MENU_BG)
         mx, my = pygame.mouse.get_pos()
@@ -3139,7 +3292,7 @@ class GameEngine:
         if req == "wave_started":
             return getattr(self, 'wave_active', False)
         if req == "wave_complete":
-            return getattr(self, 'level_0_kills', 0) >= 6
+            return not getattr(self, 'wave_active', False) and getattr(self, 'monsters', None) is not None and getattr(self, 'monsters').is_empty() and getattr(self, 'level_0_kills', 0) >= 6
         return False
 
     def _level_0_blocks_input(self, input_type):
@@ -3389,6 +3542,7 @@ class GameEngine:
                 pygame.time.delay(200)
                 if action == "RESUME":
                     self.state = "GAME"
+                    self.audio.play_gameplay_music()
                 elif action == "DICT": self.state = "DICT"; self.prev_state = "PAUSE"
                 elif action == "SETTINGS": 
                     self.settings_prev_state = "PAUSE"
@@ -3409,6 +3563,12 @@ class GameEngine:
             self.gameover_image = random.choice([1, 2, 3, 4, 4])
             self.gameover_quote = random.choice(GAMEOVER_QUOTES)
             return
+
+        # Level 0 tutorial: debug logging
+        if getattr(self, 'is_level_0', False):
+            _dbg_log("H1", f"H1: is_level_0=True, wave_active={self.wave_active}, level_0_kills={getattr(self, 'level_0_kills', 0)}, monsters_count={len(self.monsters) if self.monsters else 0}")
+        else:
+            _dbg_log("H1", f"H1: is_level_0=False (level={getattr(self, 'current_level', '?')})")
 
         if self.wave_active:
             self.spawn_timer -= dt
@@ -3449,22 +3609,12 @@ class GameEngine:
                                 f"-{getattr(m,'attack_damage',15)}", (255,100,0)))
             arrived = m.update(dt, CELL_SIZE)
 
-            # Level 0: Monster walks into tower cell → die there, drop heart (lao đầu vào tháp chết)
-            # Check using pixel distance: if monster is close enough to tower center, kill it
-            if getattr(self, 'is_level_0', False) and getattr(m, 'level_0_target_tower', None):
-                target_t = m.level_0_target_tower
-                if target_t not in self.towers:
-                    m.alive = False
-                else:
-                    tt_r, tt_c = target_t.grid_pos
-                    tx_center = tt_c * CELL_SIZE + CELL_SIZE // 2
-                    ty_center = tt_r * CELL_SIZE + CELL_SIZE // 2
-                    dx = m.pixel_pos[0] - tx_center
-                    dy = m.pixel_pos[1] - ty_center
-                    dist = (dx * dx + dy * dy) ** 0.5
-                    _dbg_log("H2", f"H2: dist={dist:.1f} vs threshold={CELL_SIZE*0.75:.1f}, path_len={len(m.path)}, path_idx={m.path_index}")
-                    if dist < CELL_SIZE * 0.75:
-                        m.take_damage(m.hp + 1)
+            # Level 0: Monster walks into adjacent cell of tower → die there, drop heart
+            # Khi quái đến đúng ô kề bên tháp (grid_pos trùng với dest), nó chết
+            if getattr(self, 'is_level_0', False) and getattr(m, 'level_0_dest_cell', None):
+                if m.grid_pos == m.level_0_dest_cell:
+                    _dbg_log("H2", f"H2: monster reached dest_cell {m.grid_pos}, killing!")
+                    m.take_damage(m.hp + 1)
 
             if m.hp <= 0:
                 if getattr(self, 'is_level_0', False):
@@ -3475,14 +3625,21 @@ class GameEngine:
                 self.floating_texts.append(FloatingText(m.pixel_pos[0], m.pixel_pos[1], f"+{reward} [♥]", (255, 100, 180)))
                 self.heart_drops.append(HeartDrop(m.pixel_pos[0], m.pixel_pos[1]))
                 m.alive = False
+                _dbg_log("H1", f"H1: monster died by HP (hp_kill), level_0_kills={getattr(self, 'level_0_kills', 0)}")
             if arrived and m.alive:
-                if self.base.take_damage(m.damage_to_base):
-                    self.state = "GAMEOVER"
-                    self.gameover_image = random.choice([1, 2, 3, 4, 4])
-                    self.gameover_quote = random.choice(GAMEOVER_QUOTES)
-                    self.play_click()
-                self.floating_texts.append(FloatingText(m.pixel_pos[0], m.pixel_pos[1], f"-{m.damage_to_base}HP", (255,0,0)))
-                m.alive = False
+                # Level 0: quái đến base thì cho chết luôn (không gây damage cho căn cứ)
+                if getattr(self, 'is_level_0', False):
+                    self.floating_texts.append(FloatingText(m.pixel_pos[0], m.pixel_pos[1], f"+{m.damage_to_base}HP", (255,100,0)))
+                    m.alive = False
+                else:
+                    if self.base.take_damage(m.damage_to_base):
+                        self.state = "GAMEOVER"
+                        self.gameover_image = random.choice([1, 2, 3, 4, 4])
+                        self.gameover_quote = random.choice(GAMEOVER_QUOTES)
+                        self.play_click()
+                    self.floating_texts.append(FloatingText(m.pixel_pos[0], m.pixel_pos[1], f"-{m.damage_to_base}HP", (255,0,0)))
+                    m.alive = False
+                _dbg_log("H1", f"H1: monster reached base (base_kill), level_0_kills={getattr(self, 'level_0_kills', 0)}")
             if not m.alive:
                 dead.append(m)
             node = node.next
@@ -3490,27 +3647,32 @@ class GameEngine:
             self.monsters.remove(m)
 
         # Level 0 tutorial: complete when all 6 Lurkers are killed
+        # NOTE: do NOT gate on level_0_tutorial_active — user may have advanced past
+        # the step before wave finished, but we still need to trigger completion once
         if getattr(self, 'is_level_0', False):
             kills = getattr(self, 'level_0_kills', 0)
             monsters_empty = self.monsters.is_empty()
             _dbg_log("H1", f"H1: completion check — monsters_empty={monsters_empty}, kills={kills}, need=6")
             if monsters_empty and kills >= 6:
+                _dbg_log("H1", "H1: COMPLETION TRIGGERED! Transitioning to LEVEL_SELECT")
                 self.gold += WAVE_CLEAR_BONUS
+                # Always transition — tutorial or practice, regardless of tutorial_active flag
                 if getattr(self, 'level_0_tutorial_active', False):
                     self.level_0_tutorial_active = False
-                    is_practice = getattr(self, 'from_tutorial_practice', False)
-                    if not is_practice:
-                        self.has_seen_tutorial = True
-                        save_progress(self.unlocked_level, getattr(self, 'has_selected_faction', False), getattr(self, 'has_seen_intro', False), True, getattr(self, 'has_beaten_game', False))
-                    if is_practice:
-                        self.warning_text = "Hoan thanh khoa huan luyen! Chuc Nu Vuong thuong lo binh an!"
-                        self.warning_timer = 180
-                        self.state = "SETTINGS"
-                    else:
-                        self.warning_text = "Hoan thanh khoa huan luyen! Chuc Nu Vuong thuong lo binh an!"
-                        self.warning_timer = 180
-                        self.state = "LEVEL_SELECT"
+                is_practice = getattr(self, 'from_tutorial_practice', False)
+                if not is_practice:
+                    self.has_seen_tutorial = True
+                    save_progress(self.unlocked_level, getattr(self, 'has_selected_faction', False), getattr(self, 'has_seen_intro', False), True, getattr(self, 'has_beaten_game', False))
+                if is_practice:
+                    self.warning_text = "Hoàn thành khóa huấn luyện! Chúc Nữ Vương thường lờ bình an!"
+                    self.warning_timer = 180
+                    self.state = "SETTINGS"
+                else:
+                    self.warning_text = "Hoàn thành khóa huấn luyện! Chúc Nữ Vương thường lờ bình an!"
+                    self.warning_timer = 180
+                    self.state = "LEVEL_SELECT"
                 self.level_0_kills = 0
+                self.wave_active = False
         # Normal levels: complete when all waves done and unlocked
         elif self.wave_queue.is_empty() and self.monsters.is_empty() and not self.wave_active:
             self.gold += WAVE_CLEAR_BONUS
@@ -3523,12 +3685,60 @@ class GameEngine:
             else:
                 self.state = "OUTRO"
                 self.victory_quote = random.choice(VICTORY_QUOTES)
+                self.outro_skippable = False
         for t in self.towers[:]:
             if t.hp <= 0:
                 self.grid[t.grid_pos[0]][t.grid_pos[1]] = 0
                 self.towers.remove(t)
                 # Remove from range_show if present
                 self.range_show = [(tw, tmr) for tw, tmr in getattr(self,'range_show',[]) if tw is not t]
+                # Level 0: monsters need to find a new tower to chase + new adjacent dest
+                if getattr(self, 'is_level_0', False):
+                    node = self.monsters.head
+                    while node:
+                        m = node.data
+                        if getattr(m, 'level_0_target_tower', None) is t:
+                            m.level_0_target_tower = None
+                            if self.towers:
+                                new_target = random.choice(list(self.towers))
+                                m.level_0_target_tower = new_target
+                                tr2, tc2 = new_target.grid_pos
+                                adjacent = [(tr2-1,tc2),(tr2+1,tc2),(tr2,tc2-1),(tr2,tc2+1)]
+                                random.shuffle(adjacent)
+                                new_dest = None
+                                for ar, ac in adjacent:
+                                    if 0 <= ar < GRID_ROWS and 0 <= ac < GRID_COLS and self.grid[ar][ac] == 0:
+                                        new_dest = (ar, ac)
+                                        break
+                                if new_dest is None:
+                                    for dr in range(-2, 3):
+                                        for dc in range(-2, 3):
+                                            ar, ac = tr2+dr, tc2+dc
+                                            if 0 <= ar < GRID_ROWS and 0 <= ac < GRID_COLS and self.grid[ar][ac] == 0:
+                                                new_dest = (ar, ac)
+                                                break
+                                        if new_dest:
+                                            break
+                                if new_dest is None:
+                                    new_dest = BASE_POS
+                                m.level_0_dest_cell = new_dest
+                                new_path = bfs_find_path(self.grid, m.grid_pos, new_dest)
+                                if new_path:
+                                    m.path = new_path
+                                    m.path_index = 0
+                                    _dbg_log("H5", f"H5: monster re-targeted to new dest {new_dest} (tower at ({tr2},{tc2}))")
+                                else:
+                                    m.path = bfs_find_path(self.grid, m.grid_pos, BASE_POS)
+                                    m.path_index = 0
+                                    _dbg_log("H5", "H5: no path, fallback to BASE")
+                            else:
+                                # No towers left, go to BASE
+                                m.level_0_dest_cell = None
+                                m.level_0_target_tower = None
+                                m.path = bfs_find_path(self.grid, m.grid_pos, BASE_POS)
+                                m.path_index = 0
+                                _dbg_log("H5", "H5: no towers left, monster goes to BASE")
+                        node = node.next
                 recalculate_paths(self.grid, self.monsters); continue
             t_name = type(t).__name__
             if t_name == "Thanatos" and not getattr(t,'is_triggered',False):
@@ -3562,6 +3772,7 @@ class GameEngine:
             if not t.can_fire(dt): continue
 
             # ── Target selection: prioritise monster closest to BASE (fewest steps left) ──
+            # Level 0: prioritise monsters heading to THIS tower (for tutorial gameplay)
             pq = PriorityQueue()
             tx_center = t.grid_pos[1] * CELL_SIZE + CELL_SIZE // 2
             ty_center = t.grid_pos[0] * CELL_SIZE + CELL_SIZE // 2
@@ -3576,11 +3787,17 @@ class GameEngine:
                         if t_name == "Phalanx":
                             same_row = abs(m.pixel_pos[1] - ty_center) < CELL_SIZE * 0.75
                             same_col = abs(m.pixel_pos[0] - tx_center) < CELL_SIZE * 0.75
+                            # Phalanx xuyên theo hàng ngang — cả cùng dòng lẫn cùng cột đều bắn
                             if not (same_row or same_col):
                                 node = node.next
                                 continue
-                        steps_left = len(m.path) - m.path_index if m.path else 9999
-                        pq.push(steps_left, m)
+                        # Level 0 tutorial: prioritize enemies heading to this tower (negative priority = high)
+                        if getattr(self, 'is_level_0', False) and getattr(m, 'level_0_target_tower', None) is t:
+                            priority = -9999  # Very high priority for level 0 target enemies
+                        else:
+                            steps_left = len(m.path) - m.path_index if m.path else 9999
+                            priority = steps_left
+                        pq.push(priority, m)
                 node = node.next
             if pq.is_empty(): continue
             _, target = pq.pop()
@@ -3695,6 +3912,7 @@ class GameEngine:
                     if getattr(self, 'level_0_step', 0) == 6 and not getattr(self, 'wave_active', False):
                         self.play_click()
                         self.wave_active = True
+                        _dbg_log("H3", f"H3: WAVE STARTED! level_0_step=6, wave_active=True")
                     return
                 box_y = SCREEN_H - int(SCREEN_H * 0.32)
                 if my >= box_y:
@@ -3836,8 +4054,7 @@ class GameEngine:
                             cost = int(t.cost * 0.5)
                             if self.gold >= cost and t.level < 3:
                                 self.gold -= cost
-                                t.level += 1
-                                t.damage = int(t.damage * 1.5)
+                                t.upgrade()
                                 self.floating_texts.append(FloatingText(mx, my, f"UP LV{t.level}!", (0,255,255)))
                             return
 
@@ -4172,7 +4389,6 @@ class GameEngine:
             elif self.state == "STORY":    self.draw_story()
             elif self.state == "DICT":     self.draw_dict()
             elif self.state == "GAME":
-                self.audio.play_gameplay_music()
                 self.update_game(dt)
                 self.draw_game()
                 self.draw_level_0_tutorial()
@@ -4312,7 +4528,7 @@ class GameEngine:
             # Draw Guide Popup Overlay
             self.draw_guide_popup()
             # Update audio playlist system every frame
-            self.audio.update(dt * 1000)
+            self.audio.update(events, dt * 1000)
             
             pygame.display.flip()
 
