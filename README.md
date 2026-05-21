@@ -73,18 +73,6 @@ Thế giới Hình Khối bị chia cắt thành hai cực đối lập: **Bạc
 
 ---
 
-## Âm nhạc (Official Soundtrack)
-
-| Track | Bài hát | Nguồn |
-|-------|---------|-------|
-| Bài hát chủ đề + Gameplay 1 | Ước Anh Tan Nát Con Tim (Instrumental) — Phùng Khánh Linh | [YouTube](https://www.youtube.com/watch?v=xg0hNDgqurM) |
-| Gameplay 2 | Grief Is the Price You Pay for Love (Instrumental) | [YouTube](https://youtu.be/5yAjz4yxHlU) |
-| Nhạc Outro | No Time to Die (Instrumental) | [YouTube](https://youtu.be/PkPponu9MTc) |
-
-> Các file nhạc (`bgm.mp3`, `song3.mp3`, `outro.mp3`, v.v.) cần được đặt trong `assets/audio/` để game phát nhạc.
-
----
-
 ## Điều khiển
 
 | Thao tác | Phím |
