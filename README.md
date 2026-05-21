@@ -4,6 +4,35 @@ Một game Tower Defense đậm chất Việt Nam, được viết hoàn toàn b
 
 ---
 
+## 🎮 Chơi ngay — Hướng dẫn nhanh
+
+### Cách 1: Chạy file .exe (đơn giản nhất)
+
+1. Vào trang [Releases](https://github.com/bersious/Shapes-Wars/releases) trên GitHub
+2. Tải file `ShapesWar.exe` mới nhất về
+3. Giải nén (nếu có) và chạy `ShapesWar.exe`
+4. Xong! Không cần cài Python hay bất kỳ phần mềm nào khác
+
+### Cách 2: Chạy từ source code (dành cho người có Python)
+
+1. Clone repository:
+   ```bash
+   git clone https://github.com/bersious/Shapes-Wars.git
+   ```
+2. Mở terminal trong thư mục vừa tải, chạy:
+   ```bash
+   pip install pygame
+   python main.py
+   ```
+
+> **Lưu ý:** Nếu muốn phát video intro/logo, cài thêm OpenCV:
+> ```bash
+> pip install opencv-python
+> ```
+> và đặt file `assets/video/logo.mp4` / `intro.mp4` vào thư mục `assets/video/`.
+
+---
+
 ## Giới thiệu
 
 **Hắc Quốc Thủ Thành** là game Tower Defense lấy cảm hứng từ câu chuyện cổ tích Việt Nam. Người chơi điều khiển Nữ hoàng Thanh Hoa của Hắc Quốc, xây dựng hệ thống tháp phòng thủ để chống lại đại quân Bạch Quốc xâm lược.
@@ -41,33 +70,6 @@ Thế giới Hình Khối bị chia cắt thành hai cực đối lập: **Bạc
 - **BFS** cho pathfinding của quái vật
 - **Recursion + memoization** tính lại tất cả đường khi grid thay đổi
 - **Priority Queue** cho thuật toán Dijkstra (nếu dùng)
-
----
-
-## Cách chạy
-
-### Yêu cầu
-
-- Python 3.8+
-- Pygame 2.0+
-
-### Cài đặt phụ thuộc
-
-```bash
-pip install pygame
-```
-
-### Chạy game
-
-```bash
-python main.py
-```
-
-> **Lưu ý:** Nếu muốn phát video intro/logo, cài thêm OpenCV:
-> ```bash
-> pip install opencv-python
-> ```
-> và đặt file `assets/video/logo.mp4` / `intro.mp4` vào thư mục `assets/video/`.
 
 ---
 
