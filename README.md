@@ -35,7 +35,7 @@ Một game Tower Defense đậm chất Việt Nam, được viết hoàn toàn b
 
 ## Giới thiệu
 
-**Hắc Quốc Thủ Thành** là game Tower Defense lấy cảm hứng từ câu chuyện cổ tích Việt Nam. Người chơi điều khiển Nữ hoàng Thanh Hoa của Hắc Quốc, xây dựng hệ thống tháp phòng thủ để chống lại đại quân Bạch Quốc xâm lược.
+**Hắc Quốc Thủ Thành** là game Tower Defense lấy cảm hứng từ một câu chuyện khoa học viễn tưởng, nơi thế giới bị chia cắt mạnh mẽ bởi 2 chủng tộc và 2 thế giới đối lập nhau. Người chơi điều khiển Nữ hoàng Thanh Hoa của Hắc Quốc, xây dựng hệ thống tháp phòng thủ để chống lại đại quân Bạch Quốc xâm lược.
 
 ### Cốt truyện
 
@@ -115,4 +115,3 @@ File thực thi sẽ nằm trong thư mục `dist/`.
 
 - **Người phát triển:** Bersious
 - **Hoàn thành:** 18–21/05/2026
-- **Âm nhạc:** Phùng Khánh Linh — Ước Anh Tan Nát Con Tim, Grief Is the Price You Pay for Love, No Time to Die (Instrumental)
