@@ -230,7 +230,7 @@ LEVEL_0_GUIDE_STEPS = [
     },
     {
         "title": "Hệ Thống Tim",
-        "text": "Tim [♥] la tien dung de mua va nang cap thap. Tieu diet quai vat se nhan them Tim. Trong khoa huan luyen, ban co vo han Tim - hay thu nghiem thoai mai!",
+        "text": "Tim [♥] là tiền dùng để mua và nâng cấp tháp. Tiêu diệt quái vật sẽ nhận thêm Tim. Trong khóa huấn luyện, bạn có vô hạn Tim — hãy thử nghiệm thoải mái!",
         "highlight": "gold",
     },
     {
@@ -253,7 +253,7 @@ LEVEL_0_GUIDE_STEPS = [
     },
     {
         "title": "Bắt Đầu Sóng",
-        "text": "Nhấn nút BẮT ĐẦU SÓNG ở góc dưới trái bản đồ để gọi quái vật. Khi sóng đã bắt đầu, nhấn TIẾP THEO.",
+        "text": "Nhấn nút 'Thử nghiệm tấn công nhé' ở góc dưới trái bản đồ để gọi quái vật. Khi sóng đã bắt đầu, nhấn TIẾP THEO.",
         "require": "wave_started",
         "highlight": "wave_btn",
     },
@@ -324,9 +324,9 @@ Email liên hệ: 25521290@gm.uit.edu.vn
 
 --- PHÁT TRIỂN Ý TƯỞNG & KỊCH BẢN ---
 Biên kịch & Thiết kế Logic: bersious.
-Dự án được hoàn thiện dựa trên ý tưởng cốt lõi của tác giả
-cùng với những lời nhận xét, góp ý vô cùng giá trị 
-đến từ những người bạn thân thiết.
+Tựa game được hoàn thành dựa trên ý tưởng gốc và chiều sâu cốt truyện
+của tác giả, đồng thời được phát triển thêm qua sự đóng góp
+và những lời góp ý quý báu từ một số người bạn thân thiết.
 
 
 --- THIẾT KẾ ĐỒ HỌA TRỰC QUAN (UI/UX ART) ---
@@ -391,8 +391,8 @@ Thể hiện bởi nghệ sĩ: Phùng Khánh Linh
 Nguồn phát trực tuyến: YouTube Official Visualizer
 Đường dẫn: https://www.youtube.com/watch?v=xg0hNDgqurM
 
-Nhạc nền Gameplay 1: GRIEF IS THE PRICE YOU PAY FOR LOVE (Instrumental)
-Nguồn: https://youtu.be/5yAjz4yxHlU
+Nhạc nền Gameplay 1: Ước Anh Tan Nát Con Tim (Instrumental)
+Nguồn: https://youtu.be/xg0hNDgqurM
 
 Nhạc nền Gameplay 2: GRIEF IS THE PRICE YOU PAY FOR LOVE (Instrumental)
 Nguồn: https://youtu.be/5yAjz4yxHlU
@@ -423,12 +423,23 @@ def draw_polygon(surface, color, cx, cy, radius, sides, angle_offset=0, width=0)
         pygame.draw.polygon(surface, color, points, width)
 
 
-def draw_glow(surface, cx, cy, radius, color):
-    glow = pygame.Surface((radius*2, radius*2), pygame.SRCALPHA)
+def draw_glow(surface, cx, cy, radius, color, behind=None):
+    """
+    Draw a soft radial glow at (cx, cy) with given radius and color.
+    If `behind` rect is provided, draw glow behind it (glow first, rect on top).
+    Otherwise draw glow on top.
+    """
+    # Draw glow rings from outside inward (soft radial gradient)
+    glow_surf = pygame.Surface((radius * 2 + 4, radius * 2 + 4), pygame.SRCALPHA)
     for r in range(radius, 0, -2):
-        alpha = int((1 - r/radius) * 150)
-        pygame.draw.circle(glow, (*color[:3], alpha), (radius, radius), r)
-    surface.blit(glow, (cx - radius, cy - radius), special_flags=pygame.BLEND_RGB_ADD)
+        alpha = int((1 - r / radius) * 120)
+        pygame.draw.circle(glow_surf, (*color[:3], alpha), (radius + 2, radius + 2), r)
+    ox, oy = cx - radius - 2, cy - radius - 2
+    if behind:
+        surface.blit(glow_surf, (ox, oy), special_flags=pygame.BLEND_RGBA_ADD)
+        pygame.draw.rect(surface, behind.get('fill', (20, 22, 30)), behind['rect'], border_radius=behind.get('radius', 15))
+    else:
+        surface.blit(glow_surf, (ox, oy), special_flags=pygame.BLEND_RGBA_ADD)
 
 def draw_entity_shape(surface, name, cx, cy, angle=0):
     # === THÁP HẮC QUỐC (tông tối: tím, đen, obsidian) ===
@@ -684,15 +695,38 @@ class GameEngine:
                 self.posters[name] = None
         return self.posters[name]
 
-    def start_menu_music(self):
+    def stop_game_music(self):
+        """Stop both bgm and song3 channels."""
         try:
-            pygame.mixer.music.load("assets/audio/bgm.mp3")
-            pygame.mixer.music.play(-1, fade_ms=1500)
-            pygame.mixer.music.set_volume(0 if getattr(self, 'is_muted', False) else 0.5)
+            if self._bgm_channel:
+                self._bgm_channel.stop()
         except:
             pass
+        try:
+            if self._song3_channel:
+                self._song3_channel.stop()
+        except:
+            pass
+        self._crossfade_t = None
+        self._in_gameplay = False
+        self._current_song = None
+
+    def start_menu_music(self):
+        """Start bgm.mp3 on channel 0 for menu. Plays continuously in loop."""
+        self.stop_game_music()
+        try:
+            bgm_sound = pygame.mixer.Sound("assets/audio/bgm.mp3")
+            if self._bgm_channel:
+                self._bgm_channel.play(bgm_sound, loops=-1)
+                vol = 0.0 if getattr(self, 'is_muted', False) else 0.5
+                self._bgm_channel.set_volume(vol)
+                self._current_song = 'bgm'
+        except Exception as e:
+            print(f"[LOG] Failed to start menu music: {e}", flush=True)
 
     def start_ending_music(self):
+        """Stop background music and play song2 for ending scene."""
+        self.stop_game_music()
         try:
             pygame.mixer.music.load("assets/audio/song2.mp3")
             pygame.mixer.music.play(-1, fade_ms=1500)
@@ -701,100 +735,152 @@ class GameEngine:
             pass
 
     def start_outro_music(self):
+        """Stop background music and play outro for ending scene."""
+        self.stop_game_music()
         try:
             pygame.mixer.music.load("assets/audio/outro.mp3")
             pygame.mixer.music.play(-1, fade_ms=1500)
-            pygame.mixer.music.set_volume(0 if getattr(self, 'is_muted', False) else 0.5)
+            pygame.mixer.music.set_volume(0 if getattr(self, 'is_muted', False) else 1.0)
         except:
             try:
                 pygame.mixer.music.load("assets/audio/song2.mp3")
                 pygame.mixer.music.play(-1, fade_ms=1500)
-                pygame.mixer.music.set_volume(0 if getattr(self, 'is_muted', False) else 0.5)
+                pygame.mixer.music.set_volume(0 if getattr(self, 'is_muted', False) else 1.0)
             except:
                 pass
 
-    # ─── Background Music Crossfade ────────────────────────────────────────────
-    # bgm.mp3 (track 1) + song3.mp3 (track 2) xen kẽ mượt mà suốt game
-    CROSSFADE_DURATION = 4000  # ms
+    # ─── Background Music System (NEW) ───────────────────────────────────────
+    # Dual-channel system: bgm.mp3 on channel 0, song3.mp3 on channel 1
+    # Crossfades between them continuously during gameplay
+    CROSSFADE_DURATION = 4000  # ms - smooth fade between songs
+    SONG_DURATION_BGM = 135000  # bgm.mp3 duration in ms (approximate)
+    SONG_DURATION_SONG3 = 140000  # song3.mp3 duration in ms (approximate)
 
     def _music_vol(self):
+        """Get current music volume based on mute state."""
         return 0.0 if getattr(self, 'is_muted', False) else 0.5
 
-    def _sound_duration(self, snd):
+    def _start_gameplay_music(self):
+        """Start the alternating bgm/song3 music for gameplay."""
+        if self._in_gameplay or self._crossfade_t is not None:
+            return  # Already in or transitioning to gameplay
+        
         try:
-            return snd.get_length() * 1000
-        except:
-            return 60000
-
-    def _load_second_track(self, path):
-        if not hasattr(self, '_music2'):
-            try:
-                self._music2 = pygame.mixer.Sound(path)
-                self._music2.set_volume(0)
-            except:
-                self._music2 = None
-
-    def _start_crossfade(self, new_track_path, new_is_track1):
-        self._load_second_track(new_track_path)
-        if self._music2:
-            self._music2.play(loops=-1)
-            self._crossfade_t = 0
-            self._crossfade_duration = self.CROSSFADE_DURATION
-            self._crossfade_new_is_track1 = new_is_track1
-            self._current_is_track1 = new_is_track1
-
-    def _switch_to_next_song(self):
-        if getattr(self, '_crossfade_t', None) is not None:
-            return
-        if getattr(self, '_current_is_track1', True):
-            self._start_crossfade("assets/audio/song3.mp3", False)
-        else:
-            self._start_crossfade("assets/audio/bgm.mp3", True)
+            # Load both tracks
+            self._bgm_sound = pygame.mixer.Sound("assets/audio/bgm.mp3")
+            self._song3_sound = pygame.mixer.Sound("assets/audio/song3.mp3")
+            
+            # Start with bgm on channel 0 - play once (0 loops)
+            # The update_music_crossfade will trigger crossfade when song ends
+            if self._bgm_channel:
+                self._bgm_channel.play(self._bgm_sound, loops=0)
+                self._bgm_channel.set_volume(self._music_vol())
+            
+            self._in_gameplay = True
+            self._current_song = 'bgm'
+            self._song_timer = 0
+            # Don't trigger crossfade immediately - wait for song to finish
+            self._crossfade_t = None
+        except Exception as e:
+            print(f"[LOG] Failed to start gameplay music: {e}", flush=True)
 
     def update_music_crossfade(self, dt_ms):
+        """Update music crossfade state. Handles transitions between bgm and song3."""
+        if not self._in_gameplay:
+            return
+        
         vol = self._music_vol()
-        t = getattr(self, '_crossfade_t', None)
-        if t is not None:
+        
+        # If currently crossfading
+        if self._crossfade_t is not None and self._crossfade_t >= 0:
             self._crossfade_t += dt_ms
-            ratio = min(1.0, self._crossfade_t / self._crossfade_duration)
-            if self._crossfade_new_is_track1:
-                pygame.mixer.music.set_volume(vol * (1.0 - ratio))
-                if self._music2:
-                    self._music2.set_volume(vol * ratio)
+            ratio = min(1.0, self._crossfade_t / self.CROSSFADE_DURATION)
+            
+            # Crossfade logic: fade out current, fade in next
+            if self._current_song == 'bgm':
+                # Crossfading: bgm fading out, song3 fading in
+                if self._bgm_channel:
+                    self._bgm_channel.set_volume(vol * (1.0 - ratio))
+                if self._song3_channel:
+                    self._song3_channel.set_volume(vol * ratio)
             else:
-                pygame.mixer.music.set_volume(vol * ratio)
-                if self._music2:
-                    self._music2.set_volume(vol * (1.0 - ratio))
+                # Crossfading: song3 fading out, bgm fading in
+                if self._song3_channel:
+                    self._song3_channel.set_volume(vol * (1.0 - ratio))
+                if self._bgm_channel:
+                    self._bgm_channel.set_volume(vol * ratio)
+            
+            # Crossfade complete
             if ratio >= 1.0:
-                if not self._crossfade_new_is_track1:
-                    pygame.mixer.music.pause()
-                    if self._music2:
-                        self._music2.set_volume(vol)
-                    cur = pygame.mixer.music
-                else:
-                    if self._music2:
-                        self._music2.stop()
-                    pygame.mixer.music.unpause()
-                    pygame.mixer.music.set_volume(vol)
-                    cur = self._music2
                 self._crossfade_t = None
-                if getattr(self, '_in_gameplay', False):
-                    dur = self._sound_duration(cur)
-                    self._song_switch_t = 0
-                    self._song_switch_duration = dur
+                # Switch to next song
+                if self._current_song == 'bgm':
+                    # Start song3 on its channel
+                    try:
+                        if self._song3_channel and self._song3_sound:
+                            self._song3_channel.play(self._song3_sound, loops=0)
+                            self._song3_channel.set_volume(vol)
+                        if self._bgm_channel:
+                            self._bgm_channel.stop()
+                            self._bgm_channel.set_volume(0)
+                        self._current_song = 'song3'
+                    except:
+                        pass
+                else:
+                    # Start bgm on its channel
+                    try:
+                        if self._bgm_channel and self._bgm_sound:
+                            self._bgm_channel.play(self._bgm_sound, loops=0)
+                            self._bgm_channel.set_volume(vol)
+                        if self._song3_channel:
+                            self._song3_channel.stop()
+                            self._song3_channel.set_volume(0)
+                        self._current_song = 'bgm'
+                    except:
+                        pass
         else:
-            if getattr(self, '_in_gameplay', False):
-                self._song_switch_t = getattr(self, '_song_switch_t', 0) + dt_ms
-                dur = getattr(self, '_song_switch_duration', 60000)
-                if self._song_switch_t >= dur:
-                    self._song_switch_t = 0
-                    self._switch_to_next_song()
+            # Not crossfading - check if current song has finished playing
+            # Using Channel.get_busy() to detect if playback finished
+            current_channel = None
+            is_playing = False
+            
+            if self._current_song == 'bgm' and self._bgm_channel:
+                current_channel = self._bgm_channel
+                is_playing = self._bgm_channel.get_busy()
+            elif self._current_song == 'song3' and self._song3_channel:
+                current_channel = self._song3_channel
+                is_playing = self._song3_channel.get_busy()
+            
+            # Start crossfade when current song finishes (not busy anymore)
+            if not is_playing and self._current_song is not None:
+                # Start pre-loading next song before crossfade
+                if self._current_song == 'bgm':
+                    # Next is song3
+                    try:
+                        if self._song3_channel and self._song3_sound:
+                            self._song3_channel.play(self._song3_sound, loops=0)
+                            self._song3_channel.set_volume(0)  # Start silent
+                        self._crossfade_t = 0  # Start crossfade
+                    except:
+                        pass
+                else:
+                    # Next is bgm
+                    try:
+                        if self._bgm_channel and self._bgm_sound:
+                            self._bgm_channel.play(self._bgm_sound, loops=0)
+                            self._bgm_channel.set_volume(0)  # Start silent
+                        self._crossfade_t = 0  # Start crossfade
+                    except:
+                        pass
 
     def start_menu_music_crossfade(self):
-        self._start_crossfade("assets/audio/bgm.mp3", True)
+        """Compatibility function - just start menu music."""
+        self.start_menu_music()
 
     def start_song3_crossfade(self):
-        self._start_crossfade("assets/audio/song3.mp3", False)
+        """Start gameplay music mode (alternating bgm and song3)."""
+        self._start_gameplay_music()
+
 
     def __init__(self):
         pygame.init()
@@ -820,6 +906,28 @@ class GameEngine:
         
         self.logo_cap = None
         self.intro_cap = None
+        
+        # === NEW: Dual-channel background music system ===
+        # Channel 1: bgm.mp3 (song 1)
+        # Channel 2: song3.mp3 (song 2)
+        self._bgm_channel = None
+        self._song3_channel = None
+        self._bgm_sound = None
+        self._song3_sound = None
+        self._crossfade_t = None
+        self._crossfade_duration = 0
+        self._in_gameplay = False
+        self._pending_music_crossfade = False
+        self._current_song = None  # 'bgm' or 'song3' - which one is currently playing
+        self._song_timer = 0  # Timer for tracking when to switch songs
+        
+        # Reserve 2 channels for background music
+        try:
+            pygame.mixer.set_num_channels(8)  # Default is 8, just to be safe
+            self._bgm_channel = pygame.mixer.Channel(0)
+            self._song3_channel = pygame.mixer.Channel(1)
+        except:
+            pass
 
         if self.has_cv2:
             import cv2
@@ -1021,6 +1129,7 @@ class GameEngine:
         self.wave_queue = Queue()
         self.spawn_timer = 0.0
         self.wave_active = False
+        self.level_0_kills = 0
         self.selected_tower_name = "Ballista"
         self.dragged_tower_type = None
         self.selected_entity_on_map = None
@@ -1031,6 +1140,31 @@ class GameEngine:
         self.heart_drops = []
         for m in WAVES_BY_LEVEL.get(level, []):
             self.wave_queue.enqueue(m)
+
+    def _spawn_level_0_monster(self):
+        """Spawn a monster directly toward a player-placed tower (level 0 tutorial)."""
+        if not self.towers:
+            return
+        target_tower = random.choice(list(self.towers))
+        tr, tc = target_tower.grid_pos
+        # Find a valid monster type to spawn
+        m_type = random.choice(list(MONSTER_REGISTRY.keys()))
+        m_class = MONSTER_REGISTRY[m_type]
+        m_obj = m_class(SPAWN_POS, BASE_POS)
+        m_obj.pixel_pos = [
+            SPAWN_POS[1] * CELL_SIZE + CELL_SIZE // 2,
+            SPAWN_POS[0] * CELL_SIZE + CELL_SIZE // 2
+        ]
+        m_obj.grid_ref = self.grid
+        alt_path = bfs_find_path(self.grid, SPAWN_POS, (tr, tc))
+        if alt_path:
+            m_obj.path = alt_path
+            m_obj.level_0_target_tower = target_tower
+        else:
+            # Fallback to base if tower path blocked
+            m_obj.path = bfs_find_path(self.grid, SPAWN_POS, BASE_POS)
+        m_obj.path_index = 0
+        self.monsters.append(m_obj)
 
     def spawn_monster(self):
         if not self.wave_queue.is_empty():
@@ -1043,20 +1177,6 @@ class GameEngine:
                     SPAWN_POS[0] * CELL_SIZE + CELL_SIZE // 2
                 ]
                 m_obj.grid_ref = self.grid
-
-                # Level 0: Walk toward player's tower (so player can see towers shoot)
-                if getattr(self, 'is_level_0', False):
-                    m_obj.path = bfs_find_path(self.grid, SPAWN_POS, BASE_POS)
-                    if self.towers:
-                        target_tower = random.choice(list(self.towers))
-                        tr, tc = target_tower.grid_pos
-                        tower_pos = (tr, tc)
-                        alt_path = bfs_find_path(self.grid, SPAWN_POS, tower_pos)
-                        if alt_path:
-                            m_obj.path = alt_path
-                    m_obj.path_index = 0
-                    self.monsters.append(m_obj)
-                    return
 
                 # Scatter logic: stronger monsters wander more waypoints before pathing
                 # Scatter count by type: Lurker=2, Drifter=2, Brute=3, Phantom=4, Ravager=5, Titan=6
@@ -1233,6 +1353,7 @@ class GameEngine:
                         self.state = "GAME"
                     else:
                         self.state = "LEVEL_SELECT"
+                        self.start_menu_music()
                 else:
                     self.state = "SETTINGS"
             else:
@@ -1446,7 +1567,7 @@ class GameEngine:
         self.screen.blit(self.fonts['md'].render("TRỞ VỀ", True, C_TEXT), (back.x+14, back.y+8))
         if click and back.collidepoint(mx, my):
             self.play_click()
-            self.state = "MENU"; pygame.time.delay(200)
+            self.state = "MENU"; self.stop_game_music(); self.start_menu_music(); pygame.time.delay(200)
 
     def draw_settings(self):
         # Draw background image dimmed
@@ -1564,6 +1685,7 @@ class GameEngine:
                     self.ending_unlocked_by_code = False
                     save_progress(self.unlocked_level, self.has_selected_faction, self.has_seen_intro, False, False)
                     self.state = "MENU"
+                    self.start_menu_music()
                 elif action == "ENDING":
                     if is_ending_unlocked:
                         self.final_story_index = 0
@@ -1732,16 +1854,19 @@ class GameEngine:
         if getattr(self, 'outro_skippable', False):
             mx, my = pygame.mouse.get_pos()
             click = pygame.mouse.get_pressed()[0]
-            skip_btn = pygame.Rect(SCREEN_W - 160, 20, 140, 38)
-            is_hover = skip_btn.collidepoint(mx, my)
-            pygame.draw.rect(self.screen, (100, 35, 35) if is_hover else (70, 25, 25), skip_btn, border_radius=6)
-            pygame.draw.rect(self.screen, (180, 70, 70) if is_hover else (120, 45, 45), skip_btn, width=1, border_radius=6)
-            lbl = self.fonts['xs'].render("BỎ QUA (ESC)", True, (255, 255, 255))
-            self.screen.blit(lbl, (skip_btn.x + skip_btn.w//2 - lbl.get_width()//2, skip_btn.y + 10))
-            if click and is_hover:
-                self.play_click()
-                self.state = "MENU"
-                self.start_menu_music()
+            skip_btn = pygame.Rect(SCREEN_W - 170, 18, 152, 40)
+            h = skip_btn.collidepoint(mx, my)
+            rd = skip_btn.inflate(6, 4) if h else skip_btn
+            if h:
+                draw_glow(self.screen, rd.centerx, rd.centery, rd.w//2 + 14, (200,80,80))
+            pygame.draw.rect(self.screen, (115,38,38) if h else (75,28,28), rd, border_radius=8)
+            pygame.draw.rect(self.screen, (220,90,90) if h else (155,58,58), rd, width=2, border_radius=8)
+            top_clr = tuple(min(255, c+20) for c in ((220,90,90) if h else (155,58,58)))
+            pygame.draw.rect(self.screen, (*top_clr, 120), (rd.x+6, rd.y+2, rd.w-12, 2), border_radius=2)
+            lbl = self.fonts['sm'].render("BỎ QUA (ESC)", True, (255,255,255))
+            self.screen.blit(lbl, (rd.centerx - lbl.get_width()//2, rd.centery - lbl.get_height()//2))
+            if click and h:
+                self.play_click(); self.state = "MENU"; self.start_menu_music()
 
     def _wrap_text_lines(self, text, font_key, max_width):
         words = text.split(' ')
@@ -2033,19 +2158,20 @@ class GameEngine:
         mx, my = pygame.mouse.get_pos()
         click = pygame.mouse.get_pressed()[0]
         
-        # Level 0 Circle - HƯỚNG DẪN (always visible)
-        cx0, cy0 = SCREEN_W // 2, 95
-        r0 = 52
-        lvl0_rect = pygame.Rect(cx0 - r0, cy0 - r0, r0 * 2, r0 * 2)
-        is_hover_0 = lvl0_rect.collidepoint(mx, my)
-        draw_glow(self.screen, cx0, cy0, r0 + 14, (255, 180, 60) if is_hover_0 else (200, 140, 40))
-        pygame.draw.circle(self.screen, (30, 25, 50), (cx0, cy0), r0)
-        pygame.draw.circle(self.screen, (255, 200, 60) if is_hover_0 else (180, 160, 80), (cx0, cy0), r0, 3)
-        qm = self.fonts['xl'].render("?", True, (255, 200, 60) if is_hover_0 else (180, 160, 80))
-        self.screen.blit(qm, (cx0 - qm.get_width()//2, cy0 - qm.get_height()//2 - 4))
-        lbl0 = self.fonts['sm'].render("HƯỚNG DẪN", True, (255, 200, 60))
-        self.screen.blit(lbl0, (cx0 - lbl0.get_width()//2, cy0 + r0 + 4))
-        if click and is_hover_0:
+        # Level 0 Button — HƯỚNG DẪN (moved below the level grid)
+        guide_btn = pygame.Rect(SCREEN_W // 2 - 110, SCREEN_H - 75, 220, 52)
+        is_hover_guide = guide_btn.collidepoint(mx, my)
+        draw_g = guide_btn.inflate(8, 6) if is_hover_guide else guide_btn
+        if is_hover_guide:
+            draw_glow(self.screen, draw_g.centerx, draw_g.centery, draw_g.w // 2 + 18, (255, 180, 50))
+        pygame.draw.rect(self.screen, (40, 30, 15) if is_hover_guide else (30, 22, 10), draw_g, border_radius=12)
+        pygame.draw.rect(self.screen, (255, 200, 60) if is_hover_guide else (180, 140, 40), draw_g, width=2, border_radius=12)
+        top_c = tuple(min(255, c + 25) for c in ((255, 200, 60) if is_hover_guide else (180, 140, 40)))
+        pygame.draw.rect(self.screen, (*top_c, 120), (draw_g.x + 8, draw_g.y + 2, draw_g.w - 16, 2), border_radius=2)
+        guide_lbl = self.fonts['md'].render("HƯỚNG DẪN", True, (255, 220, 100) if is_hover_guide else (200, 160, 70))
+        self.screen.blit(guide_lbl, (draw_g.centerx - guide_lbl.get_width() // 2,
+                                     draw_g.centery - guide_lbl.get_height() // 2))
+        if click and is_hover_guide:
             self.play_click()
             self.level_0_tutorial_active = True
             self.level_0_step = 0
@@ -2067,10 +2193,10 @@ class GameEngine:
 
             if is_hover:
                 glow_color = (80, 220, 100) if is_unlocked else (220, 60, 60)
-                draw_glow(self.screen, x, y, 65, glow_color)
-            
-            # 2. Draw base background under the thumbnail
-            pygame.draw.rect(self.screen, (20, 22, 30), draw_rect, border_radius=15)
+                draw_glow(self.screen, x, y, 65, glow_color,
+                          behind={'rect': draw_rect, 'fill': (20, 22, 30)})
+            else:
+                pygame.draw.rect(self.screen, (20, 22, 30), draw_rect, border_radius=15)
             
             # 3. Draw rounded thumbnail
             if self.level_bgs.get(i):
@@ -2170,7 +2296,7 @@ class GameEngine:
         self.screen.blit(self.fonts['md'].render("TRỞ VỀ", True, C_TEXT), (back.x+14, back.y+8))
         if click and is_back_hover:
             self.play_click()
-            self.state = "MENU"; pygame.time.delay(200)
+            self.state = "MENU"; self.stop_game_music(); self.start_menu_music(); pygame.time.delay(200)
 
     # --------------------------------------------------------------- STORY
     def get_new_elements_for_level(self, level):
@@ -2282,56 +2408,115 @@ class GameEngine:
 
         new_monsters, new_towers = self.get_new_elements_for_level(self.current_level)
         all_new = [(m, "monster") for m in new_monsters] + [(t, "tower") for t in new_towers]
-        
+
         if all_new:
+            # ── Entity Cards with poster thumbnails ───────────────────────────────
             ey = right_rect.y + 70
+            CARD_H = 76          # taller cards to fit poster thumbnail
+            CARD_GAP = 10
+            POSTER_SZ = 60       # thumbnail poster size (square)
+            POSTER_PAD = 10      # poster inset from card edge
+
             for item, item_type in all_new:
                 info = ENCYCLOPEDIA_DATA.get(item, {})
-                card_rect = pygame.Rect(right_rect.x + 20, ey, 500, 56)
-                
-                # Dynamic card and border colors depending on type
-                card_bg = (40, 30, 50) if item_type == "monster" else (30, 40, 55)
-                card_border = (220, 80, 80) if item_type == "monster" else (80, 160, 240)
-                
-                pygame.draw.rect(self.screen, card_bg, card_rect, border_radius=8)
-                pygame.draw.rect(self.screen, card_border, card_rect, width=1, border_radius=8)
-                
-                # Draw entity visual icon
-                self.draw_entity_icon(item, card_rect.x + 30, card_rect.y + 28)
-                
-                # Render Name — clipped to avoid overflow into detail button
-                name_color = (255, 180, 180) if item_type == "monster" else (180, 220, 255)
+                card_rect = pygame.Rect(right_rect.x + 16, ey, right_rect.w - 32, CARD_H)
+                is_monster = (item_type == "monster")
+
+                # Card color scheme
+                base_bg   = (38, 28, 52) if is_monster else (26, 38, 52)
+                hover_bg  = (55, 40, 75) if is_monster else (36, 54, 75)
+                border_col = (210, 75, 75) if is_monster else (70, 155, 235)
+                hover_bdr = (255, 110, 110) if is_monster else (110, 195, 255)
+
+                mx, my = pygame.mouse.get_pos()
+                is_hover_card = card_rect.collidepoint(mx, my)
+
+                # Background + border
+                pygame.draw.rect(self.screen, hover_bg if is_hover_card else base_bg,
+                                 card_rect, border_radius=10)
+                pygame.draw.rect(self.screen, hover_bdr if is_hover_card else border_col,
+                                 card_rect, width=2, border_radius=10)
+
+                # Subtle top accent line
+                accent_y = card_rect.y + 2
+                pygame.draw.rect(self.screen,
+                                 hover_bdr if is_hover_card else border_col,
+                                 (card_rect.x + 6, accent_y, card_rect.w - 12, 2),
+                                 border_radius=1)
+
+                # ── Poster thumbnail ──────────────────────────────────────────
+                poster_inner = POSTER_SZ - 4
+                poster_bg_rect = pygame.Rect(
+                    card_rect.x + POSTER_PAD,
+                    card_rect.y + (CARD_H - POSTER_SZ) // 2,
+                    POSTER_SZ, POSTER_SZ
+                )
+                pygame.draw.rect(self.screen, (14, 16, 24), poster_bg_rect, border_radius=8)
+                poster_img = self.get_poster(item)
+                if poster_img:
+                    if not hasattr(self, '_story_posters'):
+                        self._story_posters = {}
+                    if item not in self._story_posters:
+                        self._story_posters[item] = pygame.transform.smoothscale(
+                            poster_img, (POSTER_SZ, POSTER_SZ))
+                    self.screen.blit(self._story_posters[item], poster_bg_rect.topleft)
+                else:
+                    # Fallback: draw the entity shape as poster placeholder
+                    draw_entity_shape(self.screen, item,
+                                      poster_bg_rect.centerx, poster_bg_rect.centery, 0)
+
+                # ── Text area (right of poster) ───────────────────────────────
+                tx = poster_bg_rect.right + 14
+                text_right = card_rect.right - 130   # leave room for button
+
+                # Entity name
                 full_name = info.get('name', item)
-                # Try md font first, fall back to sm, then xs to fit
-                name_max_w = 275  # space before the detail button
-                n_lbl = self.fonts['sm'].render(full_name, True, name_color)
-                if n_lbl.get_width() > name_max_w:
-                    n_lbl = self.fonts['xs'].render(full_name, True, name_color)
-                self.screen.blit(n_lbl, (card_rect.x + 70, card_rect.y + 8))
-                
-                # Render Compact Stats
-                st_lbl = self.fonts['xs'].render(info.get('stats', ""), True, (170, 170, 185))
-                self.screen.blit(st_lbl, (card_rect.x + 70, card_rect.y + 32))
-                
-                # Detail Button
-                btn = pygame.Rect(card_rect.x + 360, card_rect.y + 13, 120, 30)
-                is_hover = btn.collidepoint(mx, my)
-                btn_c = (120, 50, 50) if item_type == "monster" else (40, 90, 150)
-                if is_hover:
-                    btn_c = (160, 70, 70) if item_type == "monster" else (60, 120, 200)
-                
+                name_clr = (255, 180, 180) if is_monster else (170, 220, 255)
+                # Pick font size that fits
+                n_surf = self.fonts['sm'].render(full_name, True, name_clr)
+                if n_surf.get_width() > text_right - tx:
+                    n_surf = self.fonts['xs'].render(full_name, True, name_clr)
+                self.screen.blit(n_surf, (tx, card_rect.y + 12))
+
+                # Stats line
+                stats_txt = info.get('stats', "")
+                stats_clr = (160, 255, 160) if is_monster else (160, 200, 255)
+                s_surf = self.fonts['xs'].render(stats_txt, True, stats_clr)
+                if s_surf.get_width() > text_right - tx:
+                    # Truncate if still too wide
+                    max_chars = int((text_right - tx) / (s_surf.get_width() / len(stats_txt))) - 2
+                    s_surf = self.fonts['xs'].render(stats_txt[:max_chars] + "…", True, stats_clr)
+                self.screen.blit(s_surf, (tx, card_rect.y + 32))
+
+                # Short lore snippet (1 line, if space allows)
+                lore_txt = info.get('lore', "")
+                if lore_txt:
+                    short_lore = lore_txt[:55] + "…" if len(lore_txt) > 55 else lore_txt
+                    l_surf = self.fonts['xs'].render(short_lore, True, (130, 140, 160))
+                    if l_surf.get_width() <= text_right - tx:
+                        self.screen.blit(l_surf, (tx, card_rect.y + 50))
+
+                # ── Detail button ──────────────────────────────────────────────
+                btn_x = card_rect.right - 118
+                btn_y = card_rect.y + (CARD_H - 30) // 2
+                btn = pygame.Rect(btn_x, btn_y, 104, 30)
+                btn_c  = (110, 45, 45) if is_monster else (35, 85, 145)
+                btn_h  = (155, 65, 65) if is_monster else (55, 115, 195)
+                if is_hover_card:
+                    btn_c = btn_h
                 pygame.draw.rect(self.screen, btn_c, btn, border_radius=5)
+                pygame.draw.rect(self.screen, border_col, btn, width=1, border_radius=5)
                 b_lbl = self.fonts['xs'].render("XEM CHI TIẾT", True, (255, 255, 255))
-                self.screen.blit(b_lbl, (btn.x + btn.w//2 - b_lbl.get_width()//2, btn.y + 6))
-                
-                if click and is_hover:
+                self.screen.blit(b_lbl, (btn.centerx - b_lbl.get_width() // 2, btn.centery - b_lbl.get_height() // 2))
+
+                if click and is_hover_card and btn.collidepoint(mx, my):
                     self.play_click()
                     self.dict_selected = item
                     self.prev_state = "STORY"
                     self.state = "DICT"
                     pygame.time.delay(200)
-                
-                ey += 66
+
+                ey += CARD_H + CARD_GAP
         else:
             # Decorative flavor text when no new items appear
             flavor_text = "Chiến địa quen thuộc, không có quân địch\nhoặc vũ khí mới xuất hiện. Nữ hoàng hãy\ntập trung chỉ huy tối ưu lực lượng sẵn có!"
@@ -2369,7 +2554,7 @@ class GameEngine:
         if click and is_hover_start:
             self.play_click()
             self.wave_active = True
-            self._crossfade_on_game_start = True
+            self._pending_music_crossfade = True
             self.start_cat_loading("GAME")
             pygame.time.delay(150)
 
@@ -2379,144 +2564,243 @@ class GameEngine:
         mx, my = pygame.mouse.get_pos()
         click = pygame.mouse.get_pressed()[0]
 
-        back = pygame.Rect(18, 18, 100, 38)
-        pygame.draw.rect(self.screen,
-                         (70,70,90) if back.collidepoint(mx,my) else (45,45,65), back, border_radius=5)
-        self.screen.blit(self.fonts['md'].render("TRỞ VỀ", True, C_TEXT), (back.x+14, back.y+8))
-        if click and back.collidepoint(mx, my):
+        # ── Top bar: back button + title in one unified bar ──────────────────────
+        BAR_TOP = 14
+        BAR_H   = 50
+        pygame.draw.rect(self.screen, (20, 22, 38), (18, BAR_TOP, SCREEN_W - 36, BAR_H), border_radius=10)
+        pygame.draw.rect(self.screen, (65, 72, 105), (18, BAR_TOP, SCREEN_W - 36, BAR_H), width=2, border_radius=10)
+
+        back = pygame.Rect(28, BAR_TOP + 6, 110, 38)
+        is_back_hov = back.collidepoint(mx, my)
+        pygame.draw.rect(self.screen, (70, 75, 100) if is_back_hov else (50, 55, 80), back, border_radius=6)
+        self.screen.blit(self.fonts['md'].render('TRỞ VỀ', True, (220, 230, 240)), (back.x + 20, back.y + 9))
+        if click and is_back_hov:
             self.play_click()
-            next_state = getattr(self, 'prev_state', "MENU")
+            next_state = getattr(self, 'prev_state', 'MENU')
             self.state = next_state
-            self.prev_state = "MENU"
-            if next_state == "GAME":
+            self.prev_state = 'MENU'
+            if next_state == 'GAME':
                 self.selected_entity_on_map = None
             pygame.time.delay(200)
 
-        # Layout constants
-        LEFT_W = 440
-        PANEL_TOP = 70
-        ROW_H = 46
-        SECTION_GAP = 18
-        ICON_W = 36
+        title_lbl = self.fonts['lg'].render('TỪ ĐIỂN CHIẾN BINH', True, (255, 215, 0))
+        self.screen.blit(title_lbl, (SCREEN_W // 2 - title_lbl.get_width() // 2, BAR_TOP + 10))
 
-        # ── Left Panel ────────────────────────────────────────────────────────
-        pygame.draw.rect(self.screen, (25, 28, 40), (18, PANEL_TOP, LEFT_W - 18, SCREEN_H - PANEL_TOP - 18), border_radius=12)
-        pygame.draw.rect(self.screen, (60, 65, 85), (18, PANEL_TOP, LEFT_W - 18, SCREEN_H - PANEL_TOP - 18), width=2, border_radius=12)
+        # ── Layout constants ─────────────────────────────────────────────────────
+        CONTENT_TOP = BAR_TOP + BAR_H + 12
+        CONTENT_H   = SCREEN_H - CONTENT_TOP - 14
+        LEFT_W      = 310
+        ROW_H       = 38
+        SEC_HDR_H   = 36
+        ICON_SIZE   = 32
 
-        y = PANEL_TOP + 20
-        for section_name, section_color, items in [
-            ("QUÂN BẠCH QUỐC", (255,100,100), ["Lurker","Drifter","Brute","Phantom","Ravager","Titan"]),
-            ("VŨ KHÍ HẮC QUỐC",   (100,180,255), ["Ballista","Phalanx","Ignis","Kronos","Ares","Hephaestus","Thanatos"]),
-        ]:
-            sec_lbl = self.fonts['sm'].render(section_name, True, section_color)
-            self.screen.blit(sec_lbl, (30, y)); y += 30
-            for name in items:
-                row_y = y
-                r = pygame.Rect(26, row_y, LEFT_W - 44, ROW_H)
-                sel = (name == self.dict_selected)
-                bg = (60, 100, 160) if sel else ((50, 60, 80) if r.collidepoint(mx,my) else (30, 35, 50))
-                pygame.draw.rect(self.screen, bg, r, border_radius=6)
-                if sel:
-                    pygame.draw.rect(self.screen, (100, 200, 255), r, width=2, border_radius=6)
-                draw_entity_shape(self.screen, name, 26 + ICON_W // 2, row_y + ROW_H // 2, 0)
-                name_lbl = self.fonts['md'].render(name, True, (255,255,255) if sel else (180,180,180))
-                self.screen.blit(name_lbl, (26 + ICON_W + 10, row_y + (ROW_H - name_lbl.get_height()) // 2))
-                if click and r.collidepoint(mx, my):
-                    self.play_click()
-                    self.dict_selected = name
-                    if hasattr(self, 'posters') and name in self.posters and self.posters[name] is None:
-                        del self.posters[name]
-                    pygame.time.delay(140)
-                y += ROW_H
-            y += SECTION_GAP
+        # ── Left Panel ──────────────────────────────────────────────────────────
+        lp_x    = 18
+        lp_rect = pygame.Rect(lp_x, CONTENT_TOP, LEFT_W, CONTENT_H)
+        pygame.draw.rect(self.screen, (18, 20, 32), lp_rect, border_radius=12)
+        pygame.draw.rect(self.screen, (55, 60, 85), lp_rect, width=2, border_radius=12)
 
-        # ── Right Panel ──────────────────────────────────────────────────────
+        y = CONTENT_TOP + 14
+
+        # Section 1 — QUÂN BẠCH QUỐC (enemy faction, red)
+        sec1_col  = (255, 100, 100)
+        sec1_name = 'QUÂN BẠCH QUỐC'
+        sec1_items = ['Lurker', 'Drifter', 'Brute', 'Phantom', 'Ravager', 'Titan']
+
+        # Section header with faction badge
+        sec1_bg = pygame.Rect(lp_x + 8, y, LEFT_W - 16, SEC_HDR_H)
+        pygame.draw.rect(self.screen, (*sec1_col, 50), sec1_bg, border_radius=6)
+        # Left accent bar
+        pygame.draw.rect(self.screen, sec1_col, (lp_x + 8, y + 4, 4, SEC_HDR_H - 8), border_radius=2)
+        # Faction label (PHE ĐỊCH)
+        badge_col = (180, 50, 50)
+        badge_bg = pygame.Rect(lp_x + 16, y + 6, 78, 24)
+        pygame.draw.rect(self.screen, badge_col, badge_bg, border_radius=4)
+        pygame.draw.rect(self.screen, sec1_col, badge_bg, width=1, border_radius=4)
+        self.screen.blit(self.fonts['xs'].render('PHE ĐỊCH', True, (255, 200, 200)),
+                        (badge_bg.x + 8, badge_bg.y + 5))
+        # Section name
+        sec1_lbl = self.fonts['sm'].render(sec1_name, True, sec1_col)
+        self.screen.blit(sec1_lbl, (badge_bg.right + 10, y + 10))
+        y += SEC_HDR_H + 6
+
+        for name in sec1_items:
+            row_y = y
+            r = pygame.Rect(lp_x + 8, row_y, LEFT_W - 16, ROW_H)
+            sel   = (name == self.dict_selected)
+            hover = r.collidepoint(mx, my)
+            bg = (60, 80, 130) if sel else ((48, 58, 78) if hover else (26, 30, 44))
+            pygame.draw.rect(self.screen, bg, r, border_radius=6)
+            if sel:
+                pygame.draw.rect(self.screen, (100, 180, 255), r, width=2, border_radius=6)
+                pygame.draw.rect(self.screen, sec1_col, (lp_x + 8, row_y + 4, 4, ROW_H - 8), border_radius=2)
+            draw_entity_shape(self.screen, name, lp_x + 8 + ICON_SIZE // 2, row_y + ROW_H // 2, 0)
+            name_lbl = self.fonts['sm'].render(name, True, (255, 255, 255) if sel else (165, 170, 190))
+            self.screen.blit(name_lbl, (lp_x + 8 + ICON_SIZE + 10, row_y + (ROW_H - name_lbl.get_height()) // 2))
+            if click and r.collidepoint(mx, my):
+                self.play_click()
+                self.dict_selected = name
+                if hasattr(self, 'posters') and name in self.posters and self.posters[name] is None:
+                    del self.posters[name]
+                pygame.time.delay(120)
+            y += ROW_H
+        y += 14
+
+        # Section 2 — VŨ KHÍ HẮC QUỐC (player faction, blue)
+        sec2_col  = (100, 180, 255)
+        sec2_name = 'VŨ KHÍ HẮC QUỐC'
+        sec2_items = ['Ballista', 'Phalanx', 'Ignis', 'Kronos', 'Ares', 'Hephaestus', 'Thanatos']
+
+        sec2_bg = pygame.Rect(lp_x + 8, y, LEFT_W - 16, SEC_HDR_H)
+        pygame.draw.rect(self.screen, (*sec2_col, 50), sec2_bg, border_radius=6)
+        pygame.draw.rect(self.screen, sec2_col, (lp_x + 8, y + 4, 4, SEC_HDR_H - 8), border_radius=2)
+        badge_col2 = (30, 80, 160)
+        badge_bg2 = pygame.Rect(lp_x + 16, y + 6, 70, 24)
+        pygame.draw.rect(self.screen, badge_col2, badge_bg2, border_radius=4)
+        pygame.draw.rect(self.screen, sec2_col, badge_bg2, width=1, border_radius=4)
+        self.screen.blit(self.fonts['xs'].render('PHE TA', True, (180, 220, 255)),
+                        (badge_bg2.x + 10, badge_bg2.y + 5))
+        sec2_lbl = self.fonts['sm'].render(sec2_name, True, sec2_col)
+        self.screen.blit(sec2_lbl, (badge_bg2.right + 10, y + 10))
+        y += SEC_HDR_H + 6
+
+        for name in sec2_items:
+            row_y = y
+            r = pygame.Rect(lp_x + 8, row_y, LEFT_W - 16, ROW_H)
+            sel   = (name == self.dict_selected)
+            hover = r.collidepoint(mx, my)
+            bg = (40, 80, 140) if sel else ((44, 56, 76) if hover else (26, 30, 44))
+            pygame.draw.rect(self.screen, bg, r, border_radius=6)
+            if sel:
+                pygame.draw.rect(self.screen, (90, 185, 255), r, width=2, border_radius=6)
+                pygame.draw.rect(self.screen, sec2_col, (lp_x + 8, row_y + 4, 4, ROW_H - 8), border_radius=2)
+            draw_entity_shape(self.screen, name, lp_x + 8 + ICON_SIZE // 2, row_y + ROW_H // 2, 0)
+            name_lbl = self.fonts['sm'].render(name, True, (255, 255, 255) if sel else (165, 170, 190))
+            self.screen.blit(name_lbl, (lp_x + 8 + ICON_SIZE + 10, row_y + (ROW_H - name_lbl.get_height()) // 2))
+            if click and r.collidepoint(mx, my):
+                self.play_click()
+                self.dict_selected = name
+                if hasattr(self, 'posters') and name in self.posters and self.posters[name] is None:
+                    del self.posters[name]
+                pygame.time.delay(120)
+            y += ROW_H
+
+        # ── Right Panel ─────────────────────────────────────────────────────────
         d = ENCYCLOPEDIA_DATA.get(self.dict_selected)
         if not d:
             return
 
-        rx = LEFT_W + 28
-        right_w = SCREEN_W - rx - 20
-        box_rect = pygame.Rect(rx, PANEL_TOP, right_w, SCREEN_H - PANEL_TOP - 18)
-        pygame.draw.rect(self.screen, (25, 28, 40), box_rect, border_radius=12)
-        pygame.draw.rect(self.screen, (60, 65, 85), box_rect, width=2, border_radius=12)
+        rp_x   = lp_x + LEFT_W + 16
+        rp_w   = SCREEN_W - rp_x - 18
+        rp_rect = pygame.Rect(rp_x, CONTENT_TOP, rp_w, CONTENT_H)
+        pygame.draw.rect(self.screen, (22, 25, 40), rp_rect, border_radius=12)
+        pygame.draw.rect(self.screen, (60, 65, 90), rp_rect, width=2, border_radius=12)
 
-        # Poster: top-right, 160x160
-        POSTER_SIZE = 160
-        poster_x = rx + right_w - POSTER_SIZE - 20
-        poster_rect = pygame.Rect(poster_x, PANEL_TOP + 16, POSTER_SIZE, POSTER_SIZE)
-        pygame.draw.rect(self.screen, (15, 18, 25), poster_rect, border_radius=10)
+        # ── Poster (centered, full width area) ───────────────────────────────────
+        P_SIZE = min(240, rp_w - 40, CONTENT_H - 270)
+        px = rp_x + (rp_w - P_SIZE) // 2
+        py = CONTENT_TOP + 16
+        poster_r = pygame.Rect(px, py, P_SIZE, P_SIZE)
+        pygame.draw.rect(self.screen, (14, 16, 26), poster_r.inflate(6, 6), border_radius=12)
+        pygame.draw.rect(self.screen, (80, 85, 110), poster_r.inflate(6, 6), width=2, border_radius=12)
+        pygame.draw.rect(self.screen, (18, 20, 32), poster_r, border_radius=10)
         poster = self.get_poster(self.dict_selected)
         if poster:
             if not hasattr(self, '_dict_posters'):
                 self._dict_posters = {}
             if self.dict_selected not in self._dict_posters:
-                self._dict_posters[self.dict_selected] = pygame.transform.smoothscale(poster, (POSTER_SIZE, POSTER_SIZE))
-            self.screen.blit(self._dict_posters[self.dict_selected], poster_rect.topleft)
+                self._dict_posters[self.dict_selected] = pygame.transform.smoothscale(poster, (P_SIZE, P_SIZE))
+            self.screen.blit(self._dict_posters[self.dict_selected], poster_r.topleft)
         else:
-            draw_entity_shape(self.screen, self.dict_selected, poster_rect.centerx, poster_rect.centery, 0)
-            s = self.fonts['sm'].render(f"{self.dict_selected}.png", True, (80, 80, 80))
-            self.screen.blit(s, (poster_rect.centerx - s.get_width()//2, poster_rect.bottom + 6))
+            draw_entity_shape(self.screen, self.dict_selected, poster_r.centerx, poster_r.centery, 0)
 
-        # Text content (left side of right panel, beside poster)
-        tx = rx + 20
-        ty = PANEL_TOP + 20
-        line_h = 28
+        # ── Info: stacked below poster ───────────────────────────────────────────
+        tx       = rp_x + 20
+        tx_right = rp_x + rp_w - 20
+        text_w   = tx_right - tx
+        ty       = poster_r.bottom + 16
 
-        # Name
+        # Name (centered in panel)
         name_text = d['name']
-        name_font = self.fonts['lg']
-        name_max_w = right_w - POSTER_SIZE - 50
-        name_surf = name_font.render(name_text, True, (255, 220, 100))
-        if name_surf.get_width() > name_max_w:
-            name_font = self.fonts['md']
-            name_surf = name_font.render(name_text, True, (255, 220, 100))
-        self.screen.blit(name_surf, (tx, ty)); ty += line_h + 6
+        name_surf = self.fonts['lg'].render(name_text, True, (255, 220, 80))
+        if name_surf.get_width() > text_w:
+            name_surf = self.fonts['md'].render(name_text, True, (255, 220, 80))
+        self.screen.blit(name_surf, (rp_x + (rp_w - name_surf.get_width()) // 2, ty))
+        ty += name_surf.get_height() + 8
 
-        # Unlock badge
-        tower_unlock_lv = {}
-        for lv in sorted(TOWERS_BY_LEVEL.keys()):
-            for t in TOWERS_BY_LEVEL[lv]:
-                if t not in tower_unlock_lv:
-                    tower_unlock_lv[t] = lv
-        monster_unlock_lv = {}
-        for lv in sorted(WAVES_BY_LEVEL.keys()):
-            for m in WAVES_BY_LEVEL[lv]:
-                if m not in monster_unlock_lv:
-                    monster_unlock_lv[m] = lv
-        unlock_lv = tower_unlock_lv.get(self.dict_selected) or monster_unlock_lv.get(self.dict_selected)
-        badge_txt = f">> Xuat hien tu Level {unlock_lv}" if unlock_lv else ">> Level 1"
-        badge_col = (80, 220, 140)
-        badge_surf = self.fonts['sm'].render(badge_txt, True, badge_col)
-        badge_bg = pygame.Rect(tx, ty, badge_surf.get_width() + 20, 26)
-        pygame.draw.rect(self.screen, (20, 50, 30), badge_bg, border_radius=5)
-        pygame.draw.rect(self.screen, badge_col, badge_bg, width=1, border_radius=5)
-        self.screen.blit(badge_surf, (badge_bg.x + 10, badge_bg.y + 4))
+        # Unlock badge (centered)
+        if not hasattr(self, '_dict_unlock_cache'):
+            self._dict_unlock_cache = {}
+        if self.dict_selected not in self._dict_unlock_cache:
+            tower_unlock_lv = {}
+            for lv in sorted(TOWERS_BY_LEVEL.keys()):
+                for t in TOWERS_BY_LEVEL[lv]:
+                    if t not in tower_unlock_lv:
+                        tower_unlock_lv[t] = lv
+            monster_unlock_lv = {}
+            for lv in sorted(WAVES_BY_LEVEL.keys()):
+                for m in WAVES_BY_LEVEL[lv]:
+                    if m not in monster_unlock_lv:
+                        monster_unlock_lv[m] = lv
+            self._dict_unlock_cache[self.dict_selected] = (
+                tower_unlock_lv.get(self.dict_selected) or monster_unlock_lv.get(self.dict_selected)
+            )
+        unlock_lv = self._dict_unlock_cache.get(self.dict_selected)
+        badge_txt = '>> Xuất hiện từ Level ' + str(unlock_lv) if unlock_lv else '>> Level 1'
+        badge_surf = self.fonts['sm'].render(badge_txt, True, (80, 220, 140))
+        badge_bg   = pygame.Rect(rp_x + (rp_w - badge_surf.get_width() - 18) // 2, ty,
+                                 badge_surf.get_width() + 18, 24)
+        pygame.draw.rect(self.screen, (18, 48, 28), badge_bg, border_radius=5)
+        pygame.draw.rect(self.screen, (80, 220, 140), badge_bg, width=1, border_radius=5)
+        self.screen.blit(badge_surf, (badge_bg.x + 9, badge_bg.y + 4))
         ty += 34
 
-        # Stats
-        stats_bg = pygame.Rect(tx, ty, right_w - POSTER_SIZE - 50, 36)
-        pygame.draw.rect(self.screen, (40, 45, 60), stats_bg, border_radius=6)
-        self.screen.blit(self.fonts['sm'].render(d['stats'], True, (150, 255, 150)), (tx + 12, ty + 9))
-        ty += 44
+        # Stats box (full width, no overflow)
+        stats_h  = 36
+        stats_bg = pygame.Rect(tx, ty, text_w, stats_h)
+        pygame.draw.rect(self.screen, (35, 40, 58), stats_bg, border_radius=6)
+        pygame.draw.rect(self.screen, (70, 75, 100), stats_bg, width=1, border_radius=6)
+        stats_surf = self.fonts['sm'].render(d['stats'], True, (140, 255, 140))
+        if stats_surf.get_width() > text_w - 24:
+            txt = d['stats']
+            while len(txt) > 3:
+                txt = txt[:-1]
+                ts = self.fonts['sm'].render(txt + '…', True, (140, 255, 140))
+                if ts.get_width() <= text_w - 24:
+                    stats_surf = ts
+                    break
+        self.screen.blit(stats_surf, (tx + 12, ty + 9))
+        ty += stats_h + 14
 
         # Lore
-        lore_header = self.fonts['md'].render("TIỂU SỬ", True, (180, 180, 200))
-        self.screen.blit(lore_header, (tx, ty)); ty += line_h + 4
-        lore_lines = wrap_text(d['lore'], self.fonts['md'], right_w - POSTER_SIZE - 50)
-        for ln in lore_lines:
-            self.screen.blit(self.fonts['md'].render(ln, True, (200, 210, 220)), (tx, ty)); ty += line_h
-            if ty > box_rect.bottom - 120:
-                break
+        is_tower = self.dict_selected in TOWER_REGISTRY
+        lore_col = (80, 160, 255) if is_tower else (255, 100, 100)
+        lore_hdr = self.fonts['sm'].render('TIỂU SỬ', True, lore_col)
+        self.screen.blit(lore_hdr, (tx, ty))
+        ty += lore_hdr.get_height() + 6
 
-        # Icon at bottom
-        icon_y = box_rect.bottom - 110
-        icon_lbl = self.fonts['md'].render("BIỂU TƯỢNG IN-GAME", True, (180, 180, 200))
-        self.screen.blit(icon_lbl, (tx, icon_y)); icon_y += line_h + 4
-        icon_bg = pygame.Rect(tx, icon_y, 80, 80)
-        pygame.draw.rect(self.screen, (20, 20, 30), icon_bg, border_radius=10)
-        pygame.draw.rect(self.screen, (80, 80, 100), icon_bg, width=2, border_radius=10)
-        self.draw_entity_icon(self.dict_selected, tx + 40, icon_y + 40)
+        lore_max_h = CONTENT_TOP + CONTENT_H - ty - 90
+        clip_rect = pygame.Rect(tx - 4, ty, text_w + 4, lore_max_h)
+        self.screen.set_clip(clip_rect)
+        lore_lines = wrap_text(d['lore'], self.fonts['sm'], text_w)
+        line_h = 21
+        for ln in lore_lines:
+            if ty + line_h > clip_rect.bottom:
+                break
+            self.screen.blit(self.fonts['sm'].render(ln, True, (185, 195, 210)), (tx, ty))
+            ty += line_h
+        self.screen.set_clip(None)
+
+        # ── In-game icon (bottom-right, compact) ────────────────────────────────
+        icon_size = 80
+        ix = rp_x + rp_w - icon_size - 18
+        iy = CONTENT_TOP + CONTENT_H - icon_size - 18
+        icon_bg = pygame.Rect(ix, iy, icon_size, icon_size)
+        pygame.draw.rect(self.screen, (14, 16, 26), icon_bg, border_radius=10)
+        pygame.draw.rect(self.screen, (65, 70, 95), icon_bg, width=2, border_radius=10)
+        icon_lbl = self.fonts['xs'].render('BIỂU TƯỢNG', True, (100, 110, 140))
+        self.screen.blit(icon_lbl, (ix + icon_size // 2 - icon_lbl.get_width() // 2, iy - 18))
+        self.draw_entity_icon(self.dict_selected, ix + icon_size // 2, iy + icon_size // 2)
 
 
     # --------------------------------------------------------------- GAME DRAW
@@ -2830,6 +3114,8 @@ class GameEngine:
             return getattr(self, 'level_0_tower_inspected', False)
         if req == "wave_started":
             return getattr(self, 'wave_active', False)
+        if req == "wave_complete":
+            return getattr(self, 'level_0_kills', 0) >= 3
         return False
 
     def _level_0_blocks_input(self, input_type):
@@ -2941,22 +3227,35 @@ class GameEngine:
             pygame.draw.rect(self.screen, (255, 220, 80), rect, width=3)
 
         if highlight == "wave_btn" and req == "wave_started":
-            wave_btn = pygame.Rect(20, box_y - 56, 200, 44)
+            wave_btn = pygame.Rect(20, box_y - 58, 220, 48)
             self.level_0_wave_btn = wave_btn
             is_hover_w = wave_btn.collidepoint(mx, my)
             wave_started = getattr(self, 'wave_active', False)
             if wave_started:
-                btn_col = (60, 60, 60)
-                border_col = (100, 100, 100)
-                btn_label = "ĐÃ BẮT ĐẦU"
+                wave_btn_draw = wave_btn
+                btn_col = (55, 55, 60)
+                border_col = (80, 80, 90)
+                lbl_col = (150, 150, 160)
+                glow_col = None
             else:
-                btn_col = (50, 180, 90) if is_hover_w else (30, 140, 65)
-                border_col = (100, 220, 130) if is_hover_w else (70, 160, 100)
-                btn_label = "BẮT ĐẦU SÓNG"
-            pygame.draw.rect(self.screen, btn_col, wave_btn, border_radius=8)
-            pygame.draw.rect(self.screen, border_col, wave_btn, width=2, border_radius=8)
-            lbl_w = self.fonts['md'].render(btn_label, True, (255, 255, 255))
-            self.screen.blit(lbl_w, (wave_btn.x + wave_btn.w // 2 - lbl_w.get_width() // 2, wave_btn.y + 10))
+                wave_btn_draw = wave_btn.inflate(8, 6) if is_hover_w else wave_btn
+                btn_col = (35, 155, 70) if is_hover_w else (25, 115, 55)
+                border_col = (80, 230, 120) if is_hover_w else (55, 180, 90)
+                lbl_col = (255, 255, 255)
+                glow_col = (40, 220, 90) if is_hover_w else None
+            if glow_col:
+                draw_glow(self.screen, wave_btn_draw.centerx, wave_btn_draw.centery,
+                          wave_btn_draw.w // 2 + 16, glow_col)
+            pygame.draw.rect(self.screen, btn_col, wave_btn_draw, border_radius=10)
+            pygame.draw.rect(self.screen, border_col, wave_btn_draw, width=2, border_radius=10)
+            # Subtle top highlight strip
+            pygame.draw.rect(self.screen, (*border_col, 60), wave_btn_draw, border_radius=10)
+            pygame.draw.rect(self.screen, (*[min(255, c + 30) for c in border_col], 120),
+                             (wave_btn_draw.x + 6, wave_btn_draw.y + 2, wave_btn_draw.w - 12, 2), border_radius=2)
+            btn_label = "ĐANG THỬ NGHIỆM" if wave_started else "Thử nghiệm tấn công nhé"
+            lbl_w = self.fonts['md'].render(btn_label, True, lbl_col)
+            self.screen.blit(lbl_w, (wave_btn_draw.centerx - lbl_w.get_width() // 2,
+                                      wave_btn_draw.centery - lbl_w.get_height() // 2))
         else:
             self.level_0_wave_btn = None
 
@@ -2966,17 +3265,27 @@ class GameEngine:
             self.level_0_next_btn = next_btn
             is_hover_n = next_btn.collidepoint(mx, my) and can_advance
             if can_advance:
-                btn_col = (50, 120, 70) if is_hover_n else (35, 90, 50)
-                border_col = (100, 220, 130) if is_hover_n else (70, 160, 100)
+                next_btn_draw = next_btn.inflate(8, 6) if is_hover_n else next_btn
+                btn_col = (55, 120, 75) if is_hover_n else (30, 85, 50)
+                border_col = (90, 220, 130) if is_hover_n else (65, 155, 95)
                 lbl_col = (255, 255, 255)
+                glow_col = (50, 200, 100) if is_hover_n else None
             else:
-                btn_col = (50, 50, 55)
-                border_col = (80, 80, 90)
-                lbl_col = (130, 130, 140)
-            pygame.draw.rect(self.screen, btn_col, next_btn, border_radius=8)
-            pygame.draw.rect(self.screen, border_col, next_btn, width=2, border_radius=8)
+                next_btn_draw = next_btn
+                btn_col = (45, 45, 50)
+                border_col = (70, 70, 80)
+                lbl_col = (120, 120, 130)
+                glow_col = None
+            if glow_col:
+                draw_glow(self.screen, next_btn_draw.centerx, next_btn_draw.centery,
+                          next_btn_draw.w // 2 + 14, glow_col)
+            pygame.draw.rect(self.screen, btn_col, next_btn_draw, border_radius=8)
+            pygame.draw.rect(self.screen, border_col, next_btn_draw, width=2, border_radius=8)
+            pygame.draw.rect(self.screen, (*[min(255, c + 25) for c in border_col], 100),
+                             (next_btn_draw.x + 6, next_btn_draw.y + 2, next_btn_draw.w - 12, 2), border_radius=2)
             lbl_n = self.fonts['md'].render("TIẾP THEO", True, lbl_col)
-            self.screen.blit(lbl_n, (next_btn.x + next_btn.w // 2 - lbl_n.get_width() // 2, next_btn.y + 10))
+            self.screen.blit(lbl_n, (next_btn_draw.centerx - lbl_n.get_width() // 2,
+                                      next_btn_draw.centery - lbl_n.get_height() // 2))
         else:
             self.level_0_next_btn = None
 
@@ -3081,10 +3390,17 @@ class GameEngine:
         if self.wave_active:
             self.spawn_timer -= dt
             if self.spawn_timer <= 0:
-                self.spawn_monster()
-                self.spawn_timer = 1.2
-                if self.wave_queue.is_empty():
-                    self.wave_active = False
+                # Level 0: spawn continuously toward tower (no queue), max 20 at a time
+                if getattr(self, 'is_level_0', False):
+                    alive = sum(1 for m in self.monsters if getattr(m, 'alive', False))
+                    if alive < 20:
+                        self._spawn_level_0_monster()
+                        self.spawn_timer = 1.5
+                else:
+                    self.spawn_monster()
+                    self.spawn_timer = 1.2
+                    if self.wave_queue.is_empty():
+                        self.wave_active = False
 
         dead = []
         node = self.monsters.head
@@ -3103,7 +3419,26 @@ class GameEngine:
                                 t.grid_pos[1]*CELL_SIZE+24, t.grid_pos[0]*CELL_SIZE,
                                 f"-{getattr(m,'attack_damage',15)}", (255,100,0)))
             arrived = m.update(dt, CELL_SIZE)
+
+            # Level 0: Monster walks into tower cell → die there, drop heart (lao đầu vào tháp chết)
+            # Check using pixel distance: if monster is close enough to tower center, kill it
+            if getattr(self, 'is_level_0', False) and getattr(m, 'level_0_target_tower', None):
+                target_t = m.level_0_target_tower
+                if target_t not in self.towers:
+                    m.alive = False
+                else:
+                    tt_r, tt_c = target_t.grid_pos
+                    tx_center = tt_c * CELL_SIZE + CELL_SIZE // 2
+                    ty_center = tt_r * CELL_SIZE + CELL_SIZE // 2
+                    dx = m.pixel_pos[0] - tx_center
+                    dy = m.pixel_pos[1] - ty_center
+                    dist = (dx * dx + dy * dy) ** 0.5
+                    if dist < CELL_SIZE * 0.75:
+                        m.take_damage(m.hp + 1)
+
             if m.hp <= 0:
+                if getattr(self, 'is_level_0', False):
+                    self.level_0_kills += 1
                 reward = getattr(m, 'reward', 10)
                 self.gold += reward
                 self.floating_texts.append(FloatingText(m.pixel_pos[0], m.pixel_pos[1], f"+{reward} [♥]", (255, 100, 180)))
@@ -3709,6 +4044,7 @@ class GameEngine:
             if alpha >= 255:
                 # Chuyển hẳn sang MENU và khởi động hiệu ứng trượt nút
                 self.state = "MENU"
+                self.start_menu_music()
                 self.menu_anim_y = SCREEN_H + 100
                 self.menu_fade_alpha = 0  # Nền đã hiện rõ rồi, không cần fade thêm
 
@@ -3718,6 +4054,7 @@ class GameEngine:
             self.logo_cap.release(); self.logo_cap = None
         if getattr(self, 'intro_cap', None):
             self.intro_cap.release(); self.intro_cap = None
+        self.stop_game_music()
         pygame.mixer.music.stop()
         self.state = "MENU"
         self.menu_anim_y = SCREEN_H + 300  # Khoảng nghỉ trước khi nút trượt lên
@@ -3827,9 +4164,8 @@ class GameEngine:
             elif self.state == "DICT":     self.draw_dict()
             elif self.state == "GAME":
                 # Trigger music crossfade when entering GAME state
-                if getattr(self, '_pending_music_crossfade', False) or getattr(self, '_crossfade_on_game_start', False):
+                if getattr(self, '_pending_music_crossfade', False):
                     self._pending_music_crossfade = False
-                    self._crossfade_on_game_start = False
                     self._in_gameplay = True
                     self.start_song3_crossfade()
                 self.update_game(dt)

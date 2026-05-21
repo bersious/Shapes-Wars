@@ -73,6 +73,9 @@ def recalculate_paths(grid, monsters):
         - Space Complexity: O(V) cho mỗi lần gọi BFS.
     """
     for monster in monsters:
+        # Level 0 monsters must keep their tower-chase path — never override
+        if getattr(monster, 'level_0_target_tower', None) is not None:
+            continue
         new_path = bfs_find_path(grid, monster.grid_pos, monster.target_pos)
         monster.path = new_path
         monster.path_index = 0
