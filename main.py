@@ -8,6 +8,245 @@ import asyncio
 from data_structures import LinkedList, Queue, PriorityQueue
 from algorithms import bfs_find_path, recalculate_paths
 
+# ── DEBUG LOGGING ──────────────────────────────────────────────
+import datetime, os
+_DEBUG_LOG_PATH = os.path.join(os.path.dirname(__file__), "debug-d9b4a0.log")
+
+def _dbg_log(hid, msg, **data):
+    entry = {
+        "sessionId": "d9b4a0",
+        "id": f"{hid}_{datetime.datetime.now().timestamp():.0f}",
+        "timestamp": int(datetime.datetime.now().timestamp() * 1000),
+        "runId": "run1",
+        "hypothesisId": hid,
+        "message": msg,
+        "data": data,
+    }
+    try:
+        with open(_DEBUG_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
+
+# ═══════════════════════════════════════════════════════════════
+#  AUDIO CONTROLLER — clean music system using pygame.mixer.music
+# ═══════════════════════════════════════════════════════════════
+# Design:
+#   - pygame.mixer.music: streams background tracks (low RAM, no lag)
+#   - pygame.mixer.Sound: only for short SFX (click.wav, etc.)
+#   - Music queue: playlist alternates bgm.mp3 <-> song3.mp3
+#   - End-of-track event: use MUSIC_END event to swap seamlessly
+# ═══════════════════════════════════════════════════════════════
+
+_MUSIC_END = pygame.USEREVENT + 1
+
+
+class AudioController:
+    """
+    Manages all game audio with a clean state-machine approach.
+
+    Usage:
+        ac = AudioController()
+        ac.init_game_audio()
+
+        ac.play_menu_music()
+        ac.play_gameplay_music()
+        ac.play_ending_music()
+        ac.play_outro_music()
+        ac.stop_music()
+
+        ac.update()          # call once per frame
+        ac.play_click_sfx()   # call on button press
+        ac.set_muted(True/False)
+    """
+
+    def __init__(self):
+        self._muted = False
+        self._music_vol = 0.5
+        self._sfx_vol = 0.6
+
+        # ── Menu music ───────────────────────────────────────────
+        self._menu_music_on = False
+
+        # ── Gameplay playlist (alternating bgm <-> song3) ─────────
+        self._gameplay_on = False
+        self._playlist = ["assets/audio/bgm.mp3", "assets/audio/song3.mp3"]
+        self._playlist_idx = 0   # which track is currently playing
+
+        # ── SFX ───────────────────────────────────────────────────
+        self._click_sfx = None
+
+        # ── State: 'idle' | 'menu' | 'gameplay' | 'scene' ─────────
+        self._state = 'idle'
+
+    # ── Init ──────────────────────────────────────────────────────
+
+    def init_game_audio(self):
+        """Call once after pygame.mixer.init(). Pre-loads SFX."""
+        pygame.mixer.music.set_volume(0)
+        pygame.mixer.music.set_endevent(_MUSIC_END)
+        try:
+            self._click_sfx = pygame.mixer.Sound("assets/audio/click.wav")
+            self._click_sfx.set_volume(self._sfx_vol)
+        except Exception as e:
+            print(f"[LOG] Failed to load click.wav: {e}", flush=True)
+
+    # ── Volume ────────────────────────────────────────────────────
+
+    def _effective_vol(self):
+        return 0.0 if self._muted else self._music_vol
+
+    def set_muted(self, muted: bool):
+        self._muted = muted
+        pygame.mixer.music.set_volume(self._effective_vol())
+        if self._click_sfx and muted:
+            self._click_sfx.set_volume(0)
+
+    def is_muted(self) -> bool:
+        return self._muted
+
+    def toggle_mute(self):
+        self.set_muted(not self._muted)
+
+    # ── SFX ───────────────────────────────────────────────────────
+
+    def play_click_sfx(self):
+        """Call on button click."""
+        if self._click_sfx and not self._muted:
+            self._click_sfx.set_volume(self._sfx_vol)
+            try:
+                self._click_sfx.play()
+            except Exception:
+                pass
+
+    # ── Music helpers ─────────────────────────────────────────────
+
+    def _load_and_play(self, path: str, loops: int = -1, fade_ms: int = 0):
+        """Load a track and start playing. Stops whatever is currently playing."""
+        try:
+            pygame.mixer.music.load(path)
+            pygame.mixer.music.play(loops, fade_ms=fade_ms)
+            pygame.mixer.music.set_volume(self._effective_vol())
+        except Exception as e:
+            print(f"[LOG] Audio: failed to load {path}: {e}", flush=True)
+
+    def _queue_next(self, path: str):
+        """Queue next track to play immediately after current ends."""
+        try:
+            pygame.mixer.music.queue(path)
+        except Exception as e:
+            print(f"[LOG] Audio: failed to queue {path}: {e}", flush=True)
+
+    def stop_music(self, fade_ms: int = 0):
+        """Stop all music, optionally with fade-out."""
+        pygame.mixer.music.stop()
+        self._menu_music_on = False
+        self._gameplay_on = False
+        self._state = 'idle'
+
+    # ── Logo / Intro / Outro scene music ─────────────────────────
+    # These stop whatever is playing and start their own track.
+
+    def play_logo_audio(self):
+        """Play logo_audio.mp3 (plays once, logo scene). Stops all other music."""
+        self.stop_music()
+        self._state = 'scene'
+        self._load_and_play("assets/audio/logo_audio.mp3", loops=0)
+
+    def play_intro_audio(self):
+        """Play intro_audio.mp3 (plays once, intro scene). Stops all other music."""
+        self.stop_music()
+        self._state = 'scene'
+        self._load_and_play("assets/audio/intro_audio.mp3", loops=0)
+
+    # ── Scene music ───────────────────────────────────────────────
+
+    def play_menu_music(self):
+        """Menu: loops bgm.mp3 forever. Seamless — does NOT stop gameplay music."""
+        if self._state == 'menu':
+            return  # Already playing menu music
+        self._state = 'menu'
+        self._menu_music_on = True
+        self._gameplay_on = False
+        self._load_and_play("assets/audio/bgm.mp3", loops=-1)
+
+    def play_ending_music(self):
+        """Win / ending scene: loops song2.mp3."""
+        self.stop_music()
+        self._state = 'scene'
+        self._load_and_play("assets/audio/song2.mp3", loops=-1, fade_ms=1500)
+
+    def play_outro_music(self):
+        """Outro / credits: tries outro.mp3, falls back to song2.mp3."""
+        self.stop_music()
+        self._state = 'scene'
+        try:
+            self._load_and_play("assets/audio/outro.mp3", loops=-1, fade_ms=1500)
+        except Exception:
+            self._load_and_play("assets/audio/song2.mp3", loops=-1, fade_ms=1500)
+
+    # ── Gameplay music (alternating playlist) ─────────────────────
+    #
+    #  How it works:
+    #    1. play_gameplay_music() loads & plays playlist[0], queues playlist[1].
+    #    2. update() listens for MUSIC_END. On each event:
+    #       - advance _playlist_idx to the next track
+    #       - load that track and queue the one after it
+    #    This is the correct, lag-free way to use pygame.mixer.music queue.
+    # ─────────────────────────────────────────────────────────────
+
+    def play_gameplay_music(self):
+        """
+        Start the gameplay playlist (bgm.mp3 <-> song3.mp3 loop).
+        Does NOT stop menu music — switches seamlessly between scene types.
+        """
+        if self._state == 'gameplay' and self._gameplay_on:
+            return  # Already in gameplay mode
+        self._state = 'gameplay'
+        self._gameplay_on = True
+        self._menu_music_on = False
+        self._playlist_idx = 0
+        cur = self._playlist[self._playlist_idx]
+        nxt = self._playlist[(self._playlist_idx + 1) % len(self._playlist)]
+        self._load_and_play(cur)
+        self._queue_next(nxt)
+
+    # ── Per-frame update ──────────────────────────────────────────
+    #  MUST be called once every frame (every ~16ms).
+    #  Handles automatic track switching for the gameplay playlist.
+    #  IMPORTANT: main loop must pass its event list to this function.
+
+    def update(self, events: list, dt_ms: float = 16.0):
+        """
+        Call once per frame with list of events from main loop.
+        `events` is the list from pygame.event.get()
+        `dt_ms` is the time since last frame in milliseconds (default 16).
+        Checks for MUSIC_END events and advances the playlist.
+        """
+        if not self._gameplay_on:
+            return
+
+        for event in events:
+            if event.type == _MUSIC_END:
+                # Current track finished → advance to next
+                self._playlist_idx = (self._playlist_idx + 1) % len(self._playlist)
+                cur = self._playlist[self._playlist_idx]
+                nxt = self._playlist[(self._playlist_idx + 1) % len(self._playlist)]
+                try:
+                    pygame.mixer.music.load(cur)
+                    pygame.mixer.music.play()
+                    pygame.mixer.music.set_volume(self._effective_vol())
+                    pygame.mixer.music.queue(nxt)
+                except Exception as e:
+                    print(f"[LOG] Audio playlist advance failed: {e}", flush=True)
+
+
+# ═══════════════════════════════════════════════════════════════
+#  END AUDIO CONTROLLER
+# ═══════════════════════════════════════════════════════════════
+
+
 SAVE_FILE = "save_data.json"
 def load_progress():
     if os.path.exists(SAVE_FILE):
@@ -259,7 +498,7 @@ LEVEL_0_GUIDE_STEPS = [
     },
     {
         "title": "Tiêu Diệt Quái Vật",
-        "text": "Quan sát tháp tấn công quái vật! Mỗi quái bị tiêu diệt sẽ cho bạn Tim. Khi hết sóng, khóa huấn luyện tự hoàn thành.",
+        "text": "Quan sát tháp tấn công quái vật! Mỗi quái bị tiêu diệt sẽ cho bạn Tim. Tiêu diệt đủ 6 con quái Lurker để hoàn thành khóa huấn luyện!",
         "require": "wave_complete",
     },
 ]
@@ -617,8 +856,7 @@ class GameEngine:
             self.screen = pygame.display.set_mode((SCREEN_W, SCREEN_H), pygame.DOUBLEBUF)
 
     def play_click(self):
-        if getattr(self, 'click_sfx', None) and not self.is_muted:
-            self.click_sfx.play()
+        self.audio.play_click_sfx()
 
     def preprocess_sound_icons(self):
         self.mute_icon = None
@@ -695,197 +933,6 @@ class GameEngine:
                 self.posters[name] = None
         return self.posters[name]
 
-    def stop_game_music(self):
-        """Stop both bgm and song3 channels."""
-        try:
-            if self._bgm_channel:
-                self._bgm_channel.stop()
-        except:
-            pass
-        try:
-            if self._song3_channel:
-                self._song3_channel.stop()
-        except:
-            pass
-        self._crossfade_t = None
-        self._in_gameplay = False
-        self._current_song = None
-
-    def start_menu_music(self):
-        """Start bgm.mp3 on channel 0 for menu. Plays continuously in loop."""
-        self.stop_game_music()
-        try:
-            bgm_sound = pygame.mixer.Sound("assets/audio/bgm.mp3")
-            if self._bgm_channel:
-                self._bgm_channel.play(bgm_sound, loops=-1)
-                vol = 0.0 if getattr(self, 'is_muted', False) else 0.5
-                self._bgm_channel.set_volume(vol)
-                self._current_song = 'bgm'
-        except Exception as e:
-            print(f"[LOG] Failed to start menu music: {e}", flush=True)
-
-    def start_ending_music(self):
-        """Stop background music and play song2 for ending scene."""
-        self.stop_game_music()
-        try:
-            pygame.mixer.music.load("assets/audio/song2.mp3")
-            pygame.mixer.music.play(-1, fade_ms=1500)
-            pygame.mixer.music.set_volume(0 if getattr(self, 'is_muted', False) else 0.5)
-        except:
-            pass
-
-    def start_outro_music(self):
-        """Stop background music and play outro for ending scene."""
-        self.stop_game_music()
-        try:
-            pygame.mixer.music.load("assets/audio/outro.mp3")
-            pygame.mixer.music.play(-1, fade_ms=1500)
-            pygame.mixer.music.set_volume(0 if getattr(self, 'is_muted', False) else 1.0)
-        except:
-            try:
-                pygame.mixer.music.load("assets/audio/song2.mp3")
-                pygame.mixer.music.play(-1, fade_ms=1500)
-                pygame.mixer.music.set_volume(0 if getattr(self, 'is_muted', False) else 1.0)
-            except:
-                pass
-
-    # ─── Background Music System (NEW) ───────────────────────────────────────
-    # Dual-channel system: bgm.mp3 on channel 0, song3.mp3 on channel 1
-    # Crossfades between them continuously during gameplay
-    CROSSFADE_DURATION = 4000  # ms - smooth fade between songs
-    SONG_DURATION_BGM = 135000  # bgm.mp3 duration in ms (approximate)
-    SONG_DURATION_SONG3 = 140000  # song3.mp3 duration in ms (approximate)
-
-    def _music_vol(self):
-        """Get current music volume based on mute state."""
-        return 0.0 if getattr(self, 'is_muted', False) else 0.5
-
-    def _start_gameplay_music(self):
-        """Start the alternating bgm/song3 music for gameplay."""
-        if self._in_gameplay or self._crossfade_t is not None:
-            return  # Already in or transitioning to gameplay
-        
-        try:
-            # Load both tracks
-            self._bgm_sound = pygame.mixer.Sound("assets/audio/bgm.mp3")
-            self._song3_sound = pygame.mixer.Sound("assets/audio/song3.mp3")
-            
-            # Start with bgm on channel 0 - play once (0 loops)
-            # The update_music_crossfade will trigger crossfade when song ends
-            if self._bgm_channel:
-                self._bgm_channel.play(self._bgm_sound, loops=0)
-                self._bgm_channel.set_volume(self._music_vol())
-            
-            self._in_gameplay = True
-            self._current_song = 'bgm'
-            self._song_timer = 0
-            # Don't trigger crossfade immediately - wait for song to finish
-            self._crossfade_t = None
-        except Exception as e:
-            print(f"[LOG] Failed to start gameplay music: {e}", flush=True)
-
-    def update_music_crossfade(self, dt_ms):
-        """Update music crossfade state. Handles transitions between bgm and song3."""
-        if not self._in_gameplay:
-            return
-        
-        vol = self._music_vol()
-        
-        # If currently crossfading
-        if self._crossfade_t is not None and self._crossfade_t >= 0:
-            self._crossfade_t += dt_ms
-            ratio = min(1.0, self._crossfade_t / self.CROSSFADE_DURATION)
-            
-            # Crossfade logic: fade out current, fade in next
-            if self._current_song == 'bgm':
-                # Crossfading: bgm fading out, song3 fading in
-                if self._bgm_channel:
-                    self._bgm_channel.set_volume(vol * (1.0 - ratio))
-                if self._song3_channel:
-                    self._song3_channel.set_volume(vol * ratio)
-            else:
-                # Crossfading: song3 fading out, bgm fading in
-                if self._song3_channel:
-                    self._song3_channel.set_volume(vol * (1.0 - ratio))
-                if self._bgm_channel:
-                    self._bgm_channel.set_volume(vol * ratio)
-            
-            # Crossfade complete
-            if ratio >= 1.0:
-                self._crossfade_t = None
-                # Switch to next song
-                if self._current_song == 'bgm':
-                    # Start song3 on its channel
-                    try:
-                        if self._song3_channel:
-                            self._song3_channel.stop()
-                        if self._song3_channel and self._song3_sound:
-                            self._song3_channel.play(self._song3_sound, loops=0)
-                            self._song3_channel.set_volume(vol)
-                        if self._bgm_channel:
-                            self._bgm_channel.stop()
-                            self._bgm_channel.set_volume(0)
-                        self._current_song = 'song3'
-                    except:
-                        pass
-                else:
-                    # Start bgm on its channel
-                    try:
-                        if self._bgm_channel:
-                            self._bgm_channel.stop()
-                        if self._bgm_channel and self._bgm_sound:
-                            self._bgm_channel.play(self._bgm_sound, loops=0)
-                            self._bgm_channel.set_volume(vol)
-                        if self._song3_channel:
-                            self._song3_channel.stop()
-                            self._song3_channel.set_volume(0)
-                        self._current_song = 'bgm'
-                    except:
-                        pass
-        else:
-            # Not crossfading - check if current song has finished playing
-            # Using Channel.get_busy() to detect if playback finished
-            current_channel = None
-            is_playing = False
-            
-            if self._current_song == 'bgm' and self._bgm_channel:
-                current_channel = self._bgm_channel
-                is_playing = self._bgm_channel.get_busy()
-            elif self._current_song == 'song3' and self._song3_channel:
-                current_channel = self._song3_channel
-                is_playing = self._song3_channel.get_busy()
-            
-            # Start crossfade when current song finishes (not busy anymore)
-            if not is_playing and self._current_song is not None:
-                # Start pre-loading next song before crossfade
-                if self._current_song == 'bgm':
-                    # Next is song3
-                    try:
-                        if self._song3_channel and self._song3_sound:
-                            self._song3_channel.play(self._song3_sound, loops=0)
-                            self._song3_channel.set_volume(0)  # Start silent
-                        self._crossfade_t = 0  # Start crossfade
-                    except:
-                        pass
-                else:
-                    # Next is bgm
-                    try:
-                        if self._bgm_channel and self._bgm_sound:
-                            self._bgm_channel.play(self._bgm_sound, loops=0)
-                            self._bgm_channel.set_volume(0)  # Start silent
-                        self._crossfade_t = 0  # Start crossfade
-                    except:
-                        pass
-
-    def start_menu_music_crossfade(self):
-        """Compatibility function - just start menu music."""
-        self.start_menu_music()
-
-    def start_song3_crossfade(self):
-        """Start gameplay music mode (alternating bgm and song3)."""
-        self._start_gameplay_music()
-
-
     def __init__(self):
         pygame.init()
         self.screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
@@ -911,27 +958,9 @@ class GameEngine:
         self.logo_cap = None
         self.intro_cap = None
         
-        # === NEW: Dual-channel background music system ===
-        # Channel 1: bgm.mp3 (song 1)
-        # Channel 2: song3.mp3 (song 2)
-        self._bgm_channel = None
-        self._song3_channel = None
-        self._bgm_sound = None
-        self._song3_sound = None
-        self._crossfade_t = None
-        self._crossfade_duration = 0
-        self._in_gameplay = False
-        self._pending_music_crossfade = False
-        self._current_song = None  # 'bgm' or 'song3' - which one is currently playing
-        self._song_timer = 0  # Timer for tracking when to switch songs
-        
-        # Reserve 2 channels for background music
-        try:
-            pygame.mixer.set_num_channels(8)  # Default is 8, just to be safe
-            self._bgm_channel = pygame.mixer.Channel(0)
-            self._song3_channel = pygame.mixer.Channel(1)
-        except:
-            pass
+        # Initialize audio controller
+        self.audio = AudioController()
+        self.audio.init_game_audio()
 
         if self.has_cv2:
             import cv2
@@ -961,7 +990,7 @@ class GameEngine:
             self.fade_alpha = 255
         else:
             self.state = "MENU"
-            self.start_menu_music()
+            self.audio.play_menu_music()
             self.menu_anim_y = 0
             self.menu_fade_alpha = 0
 
@@ -988,8 +1017,6 @@ class GameEngine:
                 self.level_bgs[i] = pygame.transform.scale(bg, (GRID_COLS * CELL_SIZE, SCREEN_H))
             except:
                 self.level_bgs[i] = None
-                
-        # Start background music is now handled by start_menu_music()
             
         try:
             self.map_bg = pygame.image.load("assets/backgrounds/map_bg.png").convert()
@@ -1076,12 +1103,6 @@ class GameEngine:
         
         self.prev_state = "MENU"
         self.dict_selected = "Lurker"
-        self.is_muted = False
-        try:
-            self.click_sfx = pygame.mixer.Sound("assets/audio/click.wav")
-            self.click_sfx.set_volume(0.6)
-        except:
-            self.click_sfx = None
         self.current_level = 1
         self.unlocked_level, self.has_selected_faction, self.has_seen_intro, self.has_beaten_game, self.has_seen_tutorial = load_progress()
         self.ending_unlocked_by_code = False
@@ -1146,13 +1167,15 @@ class GameEngine:
             self.wave_queue.enqueue(m)
 
     def _spawn_level_0_monster(self):
-        """Spawn a monster directly toward a player-placed tower (level 0 tutorial)."""
+        """Spawn a Lurker toward a random placed tower's grid cell (level 0 tutorial)."""
+        _dbg_log("H3", "H3: _spawn_level_0_monster CALLED")
         if not self.towers:
+            _dbg_log("H3", "H3: no towers, returning")
             return
         target_tower = random.choice(list(self.towers))
         tr, tc = target_tower.grid_pos
-        # Find a valid monster type to spawn
-        m_type = random.choice(list(MONSTER_REGISTRY.keys()))
+        # Only spawn Lurker (weakest monster) for tutorial
+        m_type = "Lurker"
         m_class = MONSTER_REGISTRY[m_type]
         m_obj = m_class(SPAWN_POS, BASE_POS)
         m_obj.pixel_pos = [
@@ -1164,11 +1187,14 @@ class GameEngine:
         if alt_path:
             m_obj.path = alt_path
             m_obj.level_0_target_tower = target_tower
+            _dbg_log("H5", f"H5: path found to tower cell ({tr},{tc}), len={len(alt_path)}")
         else:
             # Fallback to base if tower path blocked
             m_obj.path = bfs_find_path(self.grid, SPAWN_POS, BASE_POS)
+            _dbg_log("H5", "H5: no path to tower, fallback to BASE")
         m_obj.path_index = 0
         self.monsters.append(m_obj)
+        _dbg_log("H3", f"H3: spawned Lurker, path_len={len(m_obj.path)}, total_monsters={len(self.monsters)}")
 
     def spawn_monster(self):
         if not self.wave_queue.is_empty():
@@ -1353,11 +1379,11 @@ class GameEngine:
                         self.from_tutorial_practice = False
                         self._init_level_0_tutorial_state()
                         self.reset_game(0)
-                        self._pending_music_crossfade = True
                         self.state = "GAME"
                     else:
+
                         self.state = "LEVEL_SELECT"
-                        self.start_menu_music()
+                        self.audio.play_menu_music()
                 else:
                     self.state = "SETTINGS"
             else:
@@ -1489,7 +1515,7 @@ class GameEngine:
                 self.state = "OUTRO"
                 self.outro_scroll_y = SCREEN_H
                 self.outro_skippable = getattr(self, 'final_from_settings', False)
-                self.start_outro_music()
+                self.audio.play_outro_music()
             else:
                 self.final_story_index += 1
             pygame.time.delay(200)
@@ -1571,7 +1597,7 @@ class GameEngine:
         self.screen.blit(self.fonts['md'].render("TRỞ VỀ", True, C_TEXT), (back.x+14, back.y+8))
         if click and back.collidepoint(mx, my):
             self.play_click()
-            self.state = "MENU"; self.stop_game_music(); self.start_menu_music(); pygame.time.delay(200)
+            self.state = "MENU"; self.audio.stop_music(); self.audio.play_menu_music(); pygame.time.delay(200)
 
     def draw_settings(self):
         # Draw background image dimmed
@@ -1609,7 +1635,7 @@ class GameEngine:
         pygame.draw.rect(self.screen, btn_color, vol_rect, border_radius=12)
         pygame.draw.rect(self.screen, border_color, vol_rect, width=2, border_radius=12)
         
-        if self.is_muted:
+        if self.audio.is_muted():
             if getattr(self, 'mute_icon', None):
                 self.screen.blit(self.mute_icon, (vol_rect.x + 10, vol_rect.y + 10))
             else:
@@ -1625,8 +1651,7 @@ class GameEngine:
         if click and is_hover_vol:
             if getattr(self, 'settings_mute_cooldown', 0) <= 0:
                 self.play_click()
-                self.is_muted = not self.is_muted
-                pygame.mixer.music.set_volume(0 if self.is_muted else 0.5)
+                self.audio.toggle_mute()
                 self.settings_mute_cooldown = 15
                 pygame.time.delay(150)
                 
@@ -1689,14 +1714,14 @@ class GameEngine:
                     self.ending_unlocked_by_code = False
                     save_progress(self.unlocked_level, self.has_selected_faction, self.has_seen_intro, False, False)
                     self.state = "MENU"
-                    self.start_menu_music()
+                    self.audio.play_menu_music()
                 elif action == "ENDING":
                     if is_ending_unlocked:
                         self.final_story_index = 0
                         self.final_from_settings = True
                         self.story_button_cooldown = 3.0  # Cooldown
                         self.state = "FINAL_STORY"
-                        self.start_ending_music()
+                        self.audio.play_ending_music()
                     else:
                         self.settings_prompt_password = True
                         self.setting_password_input = ""
@@ -1705,7 +1730,7 @@ class GameEngine:
                         self.state = "OUTRO"
                         self.outro_scroll_y = SCREEN_H
                         self.outro_skippable = True  # Replay is skippable
-                        self.start_outro_music()
+                        self.audio.play_outro_music()
                     else:
                         self.settings_prompt_password = True
                         self.setting_password_input = ""
@@ -1727,7 +1752,6 @@ class GameEngine:
                     self.from_tutorial_practice = True
                     self._init_level_0_tutorial_state()
                     self.reset_game(0)
-                    self._pending_music_crossfade = True
                     self.state = "GAME"
                 pygame.time.delay(200)
                 
@@ -1852,7 +1876,7 @@ class GameEngine:
         total_height = len(lines) * line_height
         if self.outro_scroll_y < -total_height:
             self.state = "MENU"
-            self.start_menu_music()
+            self.audio.play_menu_music()
 
         # 5. Skip button (if skippable)
         if getattr(self, 'outro_skippable', False):
@@ -1870,7 +1894,7 @@ class GameEngine:
             lbl = self.fonts['sm'].render("BỎ QUA (ESC)", True, (255,255,255))
             self.screen.blit(lbl, (rd.centerx - lbl.get_width()//2, rd.centery - lbl.get_height()//2))
             if click and h:
-                self.play_click(); self.state = "MENU"; self.start_menu_music()
+                self.play_click(); self.state = "MENU"; self.audio.play_menu_music()
 
     def _wrap_text_lines(self, text, font_key, max_width):
         words = text.split(' ')
@@ -2182,7 +2206,6 @@ class GameEngine:
             self.from_tutorial_practice = False
             self._init_level_0_tutorial_state()
             self.reset_game(0)
-            self._pending_music_crossfade = True
             self.state = "GAME"
             pygame.time.delay(200)
 
@@ -2274,7 +2297,6 @@ class GameEngine:
                         self.from_tutorial_practice = False
                         self._init_level_0_tutorial_state()
                         self.reset_game(0)
-                        self._pending_music_crossfade = True
                         self.state = "GAME"
                     else:
                         # Normal level start (story then game)
@@ -2300,7 +2322,7 @@ class GameEngine:
         self.screen.blit(self.fonts['md'].render("TRỞ VỀ", True, C_TEXT), (back.x+14, back.y+8))
         if click and is_back_hover:
             self.play_click()
-            self.state = "MENU"; self.stop_game_music(); self.start_menu_music(); pygame.time.delay(200)
+            self.state = "MENU"; self.audio.stop_music(); self.audio.play_menu_music(); pygame.time.delay(200)
 
     # --------------------------------------------------------------- STORY
     def get_new_elements_for_level(self, level):
@@ -2329,7 +2351,6 @@ class GameEngine:
             self.from_tutorial_practice = False
             self._init_level_0_tutorial_state()
             self.reset_game(0)
-            self._pending_music_crossfade = True
             self.state = "GAME"
             return
         self.screen.fill(C_MENU_BG)
@@ -2558,7 +2579,6 @@ class GameEngine:
         if click and is_hover_start:
             self.play_click()
             self.wave_active = True
-            self._pending_music_crossfade = True
             self.start_cat_loading("GAME")
             pygame.time.delay(150)
 
@@ -3119,7 +3139,7 @@ class GameEngine:
         if req == "wave_started":
             return getattr(self, 'wave_active', False)
         if req == "wave_complete":
-            return getattr(self, 'level_0_kills', 0) >= 3
+            return getattr(self, 'level_0_kills', 0) >= 6
         return False
 
     def _level_0_blocks_input(self, input_type):
@@ -3368,7 +3388,6 @@ class GameEngine:
                 self.play_click()
                 pygame.time.delay(200)
                 if action == "RESUME":
-                    self._pending_music_crossfade = False
                     self.state = "GAME"
                 elif action == "DICT": self.state = "DICT"; self.prev_state = "PAUSE"
                 elif action == "SETTINGS": 
@@ -3394,12 +3413,18 @@ class GameEngine:
         if self.wave_active:
             self.spawn_timer -= dt
             if self.spawn_timer <= 0:
-                # Level 0: spawn continuously toward tower (no queue), max 20 at a time
+                # Level 0: spawn Lurker toward towers, limited to 6 total kills
                 if getattr(self, 'is_level_0', False):
                     alive = sum(1 for m in self.monsters if getattr(m, 'alive', False))
-                    if alive < 20:
+                    total_needed = 6
+                    kills = getattr(self, 'level_0_kills', 0)
+                    _dbg_log("H1", f"H1: wave_active spawn check — alive={alive}, kills={kills}, total_needed={total_needed}")
+                    if alive < 20 and kills < total_needed:
+                        _dbg_log("H3", "H3: spawning Lurker (condition met)")
                         self._spawn_level_0_monster()
                         self.spawn_timer = 1.5
+                    else:
+                        _dbg_log("H3", f"H3: NOT spawning — alive={alive}, kills={kills}")
                 else:
                     self.spawn_monster()
                     self.spawn_timer = 1.2
@@ -3437,12 +3462,14 @@ class GameEngine:
                     dx = m.pixel_pos[0] - tx_center
                     dy = m.pixel_pos[1] - ty_center
                     dist = (dx * dx + dy * dy) ** 0.5
+                    _dbg_log("H2", f"H2: dist={dist:.1f} vs threshold={CELL_SIZE*0.75:.1f}, path_len={len(m.path)}, path_idx={m.path_index}")
                     if dist < CELL_SIZE * 0.75:
                         m.take_damage(m.hp + 1)
 
             if m.hp <= 0:
                 if getattr(self, 'is_level_0', False):
                     self.level_0_kills += 1
+                    _dbg_log("H1", f"H1: monster killed, level_0_kills={self.level_0_kills}")
                 reward = getattr(m, 'reward', 10)
                 self.gold += reward
                 self.floating_texts.append(FloatingText(m.pixel_pos[0], m.pixel_pos[1], f"+{reward} [♥]", (255, 100, 180)))
@@ -3462,53 +3489,40 @@ class GameEngine:
         for m in dead:
             self.monsters.remove(m)
 
-        if not self.wave_active and self.monsters.is_empty() and self.wave_queue.is_empty():
+        # Level 0 tutorial: complete when all 6 Lurkers are killed
+        if getattr(self, 'is_level_0', False):
+            kills = getattr(self, 'level_0_kills', 0)
+            monsters_empty = self.monsters.is_empty()
+            _dbg_log("H1", f"H1: completion check — monsters_empty={monsters_empty}, kills={kills}, need=6")
+            if monsters_empty and kills >= 6:
+                self.gold += WAVE_CLEAR_BONUS
+                if getattr(self, 'level_0_tutorial_active', False):
+                    self.level_0_tutorial_active = False
+                    is_practice = getattr(self, 'from_tutorial_practice', False)
+                    if not is_practice:
+                        self.has_seen_tutorial = True
+                        save_progress(self.unlocked_level, getattr(self, 'has_selected_faction', False), getattr(self, 'has_seen_intro', False), True, getattr(self, 'has_beaten_game', False))
+                    if is_practice:
+                        self.warning_text = "Hoan thanh khoa huan luyen! Chuc Nu Vuong thuong lo binh an!"
+                        self.warning_timer = 180
+                        self.state = "SETTINGS"
+                    else:
+                        self.warning_text = "Hoan thanh khoa huan luyen! Chuc Nu Vuong thuong lo binh an!"
+                        self.warning_timer = 180
+                        self.state = "LEVEL_SELECT"
+                self.level_0_kills = 0
+        # Normal levels: complete when all waves done and unlocked
+        elif self.wave_queue.is_empty() and self.monsters.is_empty() and not self.wave_active:
             self.gold += WAVE_CLEAR_BONUS
-
-            # Level 0 Tutorial completion
-            if getattr(self, 'level_0_tutorial_active', False):
-                self.level_0_tutorial_active = False
-                is_practice = getattr(self, 'from_tutorial_practice', False)
-                if not is_practice:
-                    self.has_seen_tutorial = True
-                    save_progress(self.unlocked_level, getattr(self, 'has_selected_faction', False), getattr(self, 'has_seen_intro', False), True, getattr(self, 'has_beaten_game', False))
-
-                if is_practice:
-                    self.warning_text = "Hoàn thành khóa huấn luyện! Chúc Nữ Vương thượng lộ bình an!"
-                    self.warning_timer = 180
-                    self.state = "SETTINGS"
-                else:
-                    self.warning_text = "Hoàn thành khóa huấn luyện! Chúc Nữ Vương thượng lộ bình an!"
-                    self.warning_timer = 180
-                    self.state = "LEVEL_SELECT"
-                return
-
-            if getattr(self, 'tutorial_active', False):
-                self.tutorial_active = False
-                self.has_seen_tutorial = True
-                save_progress(self.unlocked_level, getattr(self, 'has_selected_faction', False), getattr(self, 'has_seen_intro', False), True, getattr(self, 'has_beaten_game', False))
-                self.warning_text = "Hoàn thành Khóa Huấn Luyện!"
-                self.warning_timer = 180
-                self.state = "SETTINGS" if getattr(self, 'from_practice', False) else "LEVEL_SELECT"
-                return
-
             if self.current_level < 10 and self.current_level >= self.unlocked_level:
                 self.unlocked_level = self.current_level + 1
                 save_progress(self.unlocked_level, getattr(self, 'has_selected_faction', False), getattr(self, 'has_seen_intro', False), self.has_seen_tutorial, getattr(self, 'has_beaten_game', False))
-            
             if self.current_level < 10:
                 self.state = "LEVEL_VICTORY"
                 self.victory_image = random.randint(1, 3)
-                self.victory_quote = random.choice(VICTORY_QUOTES)
             else:
-                self.state = "FINAL_STORY"
-                self.final_story_index = 0
-                self.final_from_settings = False
-                self.story_button_cooldown = 3.0
-                self.has_beaten_game = True
-                save_progress(self.unlocked_level, getattr(self, 'has_selected_faction', False), getattr(self, 'has_seen_intro', False), self.has_seen_tutorial, True)
-                self.start_ending_music()
-
+                self.state = "OUTRO"
+                self.victory_quote = random.choice(VICTORY_QUOTES)
         for t in self.towers[:]:
             if t.hp <= 0:
                 self.grid[t.grid_pos[0]][t.grid_pos[1]] = 0
@@ -3661,7 +3675,6 @@ class GameEngine:
             if event.key == pygame.K_r:     self.reset_game(self.current_level)
             if event.key == pygame.K_ESCAPE:
                 self.play_click()
-                self._in_gameplay = False
                 self.state = "PAUSE"
                 
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -3896,16 +3909,10 @@ class GameEngine:
             if self.delay_timer <= 0:
                 if getattr(self, 'logo_cap', None) and self.logo_cap.isOpened():
                     self.state = "FADE_IN_LOGO"
-                    try:
-                        pygame.mixer.music.load("assets/audio/logo_audio.mp3")
-                        pygame.mixer.music.play(1)
-                    except: pass
+                    self.audio.play_logo_audio()
                 elif getattr(self, 'intro_cap', None) and self.intro_cap.isOpened():
                     self.state = "FADE_IN_INTRO"
-                    try:
-                        pygame.mixer.music.load("assets/audio/intro_audio.mp3")
-                        pygame.mixer.music.play(1)
-                    except: pass
+                    self.audio.play_intro_audio()
                 else:
                     self.skip_videos()
 
@@ -3948,7 +3955,7 @@ class GameEngine:
                     # #endregion
                 else:
                     self.logo_cap.release(); self.logo_cap = None
-                    pygame.mixer.music.stop()
+                    self.audio.stop_music()
                     self.state = "FADE_OUT_LOGO"
                     self.fade_alpha = 0
             else:
@@ -3994,11 +4001,7 @@ class GameEngine:
                     del self._cat_timer, self._quick_fade
                     if getattr(self, 'intro_cap', None) and self.intro_cap.isOpened():
                         self.state = "FADE_IN_INTRO"
-                        try:
-                            pygame.mixer.music.load("assets/audio/intro_audio.mp3")
-                            pygame.mixer.music.play(1)
-                            pygame.mixer.music.queue("assets/audio/bgm.mp3", loops=-1)
-                        except: pass
+                        self.audio.play_intro_audio()
                     else:
                         self.skip_videos()
 
@@ -4048,7 +4051,7 @@ class GameEngine:
             if alpha >= 255:
                 # Chuyển hẳn sang MENU và khởi động hiệu ứng trượt nút
                 self.state = "MENU"
-                self.start_menu_music()
+                self.audio.play_menu_music()
                 self.menu_anim_y = SCREEN_H + 100
                 self.menu_fade_alpha = 0  # Nền đã hiện rõ rồi, không cần fade thêm
 
@@ -4058,12 +4061,11 @@ class GameEngine:
             self.logo_cap.release(); self.logo_cap = None
         if getattr(self, 'intro_cap', None):
             self.intro_cap.release(); self.intro_cap = None
-        self.stop_game_music()
-        pygame.mixer.music.stop()
+        self.audio.stop_music()
         self.state = "MENU"
         self.menu_anim_y = SCREEN_H + 300  # Khoảng nghỉ trước khi nút trượt lên
         self.menu_fade_alpha = 255
-        self.start_menu_music()
+        self.audio.play_menu_music()
 
     def start_cat_loading(self, next_state, frames=90):
         """Hiện mèo xoay vòng rồi chuyển sang next_state sau `frames` frame."""
@@ -4110,8 +4112,11 @@ class GameEngine:
                 dt = self.clock.tick(30) / 1000.0
             else:
                 dt = min(self.clock.tick(FPS) / 1000.0, 0.05)
-                
-            for event in pygame.event.get():
+            
+            # Get events once and use for all systems
+            events = pygame.event.get()
+            
+            for event in events:
                 if event.type == pygame.QUIT: pygame.quit(); sys.exit()
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_F11:
@@ -4124,7 +4129,7 @@ class GameEngine:
                             if getattr(self, 'outro_skippable', False):
                                 self.play_click()
                                 self.state = "MENU"
-                                self.start_menu_music()
+                                self.audio.play_menu_music()
                 elif self.state == "SETTINGS" and getattr(self, 'settings_prompt_password', False):
                     if event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_BACKSPACE:
@@ -4167,11 +4172,7 @@ class GameEngine:
             elif self.state == "STORY":    self.draw_story()
             elif self.state == "DICT":     self.draw_dict()
             elif self.state == "GAME":
-                # Trigger music crossfade when entering GAME state
-                if getattr(self, '_pending_music_crossfade', False):
-                    self._pending_music_crossfade = False
-                    self._in_gameplay = True
-                    self.start_song3_crossfade()
+                self.audio.play_gameplay_music()
                 self.update_game(dt)
                 self.draw_game()
                 self.draw_level_0_tutorial()
@@ -4179,12 +4180,11 @@ class GameEngine:
                 self.draw_pause()
             elif self.state == "GAMEOVER":
                 self.screen.fill((40, 10, 10))
-                
-                # Render random lose image
+
                 if not hasattr(self, 'gameover_img_cache'):
                     self.gameover_img_cache = {}
                 img_idx = getattr(self, 'gameover_image', 1)
-                
+
                 if img_idx not in self.gameover_img_cache:
                     loaded = False
                     for ext in ["png", "PNG"]:
@@ -4199,7 +4199,7 @@ class GameEngine:
                                 pass
                     if not loaded:
                         self.gameover_img_cache[img_idx] = None
-                
+
                 img_rect = pygame.Rect(SCREEN_W//2 - 300, 100, 600, 350)
                 if self.gameover_img_cache[img_idx] is not None:
                     self.screen.blit(self.gameover_img_cache[img_idx], img_rect.topleft)
@@ -4212,10 +4212,10 @@ class GameEngine:
 
                 hdr = self.fonts['xl'].render("THÀNH ĐÃ THẤT THỦ!", True, (255, 50, 50))
                 self.screen.blit(hdr, (SCREEN_W//2 - hdr.get_width()//2, 40))
-                
+
                 mx, my = pygame.mouse.get_pos()
                 click = pygame.mouse.get_pressed()[0]
-                
+
                 btn_replay = pygame.Rect(SCREEN_W//2 - 250, 480, 200, 60)
                 is_hover_r = btn_replay.collidepoint(mx, my)
                 c_r = (180, 40, 40) if is_hover_r else (120, 30, 30)
@@ -4223,7 +4223,7 @@ class GameEngine:
                 pygame.draw.rect(self.screen, (255,255,255), btn_replay, width=2, border_radius=10)
                 lbl_r = self.fonts['lg'].render("CHƠI LẠI", True, (255, 255, 255))
                 self.screen.blit(lbl_r, (btn_replay.x + btn_replay.w//2 - lbl_r.get_width()//2, btn_replay.y + 10))
-                
+
                 btn_menu = pygame.Rect(SCREEN_W//2 + 50, 480, 200, 60)
                 is_hover_m = btn_menu.collidepoint(mx, my)
                 c_m = (100, 100, 100) if is_hover_m else (60, 60, 60)
@@ -4231,15 +4231,14 @@ class GameEngine:
                 pygame.draw.rect(self.screen, (255,255,255), btn_menu, width=2, border_radius=10)
                 lbl_m = self.fonts['lg'].render("MENU", True, (255, 255, 255))
                 self.screen.blit(lbl_m, (btn_menu.x + btn_menu.w//2 - lbl_m.get_width()//2, btn_menu.y + 10))
-                
-                # Render quote / caption
+
                 quote_text = getattr(self, 'gameover_quote', "Cuộc chiến khốc liệt đã khép lại...")
                 lbl_q = self.fonts['md'].render(quote_text, True, (250, 180, 180))
                 q_rect = pygame.Rect(SCREEN_W//2 - 450, 560, 900, 45)
                 pygame.draw.rect(self.screen, (30, 5, 5), q_rect, border_radius=8)
                 pygame.draw.rect(self.screen, (150, 50, 50), q_rect, width=1, border_radius=8)
                 self.screen.blit(lbl_q, (SCREEN_W//2 - lbl_q.get_width()//2, q_rect.y + 10))
-                
+
                 if click:
                     if is_hover_r:
                         self.play_click()
@@ -4312,9 +4311,8 @@ class GameEngine:
                 
             # Draw Guide Popup Overlay
             self.draw_guide_popup()
-            
-            # Crossfade background music if active
-            self.update_music_crossfade(dt * 1000)
+            # Update audio playlist system every frame
+            self.audio.update(dt * 1000)
             
             pygame.display.flip()
 
