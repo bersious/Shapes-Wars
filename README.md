@@ -31,6 +31,9 @@ Một game Tower Defense đậm chất ?, được viết hoàn toàn bằng Pyt
 > ```
 > và đặt file `assets/video/logo.mp4` / `intro.mp4` vào thư mục `assets/video/`.
 
+> **⚠️ Windows Defender có thể chặn file .exe!**
+> Nếu gặp cảnh báo "Windows protected your PC", hãy bấm **"More info"** → **"Run anyway"** để chạy game. File hoàn toàn an toàn, chỉ là chưa có chứng chỉ trả phí nên Defender sẽ cảnh báo.
+
 ---
 
 ## 📸 Screenshots
