@@ -1,6 +1,6 @@
 # Hắc Quốc Thủ Thành (Shapes Wars)
 
-Một game Tower Defense đậm chất Việt Nam, được viết hoàn toàn bằng Python + Pygame.
+Một game Tower Defense đậm chất ?, được viết hoàn toàn bằng Python + Pygame.
 
 ---
 
