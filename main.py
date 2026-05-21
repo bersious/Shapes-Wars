@@ -817,6 +817,8 @@ class GameEngine:
                 if self._current_song == 'bgm':
                     # Start song3 on its channel
                     try:
+                        if self._song3_channel:
+                            self._song3_channel.stop()
                         if self._song3_channel and self._song3_sound:
                             self._song3_channel.play(self._song3_sound, loops=0)
                             self._song3_channel.set_volume(vol)
@@ -829,6 +831,8 @@ class GameEngine:
                 else:
                     # Start bgm on its channel
                     try:
+                        if self._bgm_channel:
+                            self._bgm_channel.stop()
                         if self._bgm_channel and self._bgm_sound:
                             self._bgm_channel.play(self._bgm_sound, loops=0)
                             self._bgm_channel.set_volume(vol)
