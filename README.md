@@ -115,7 +115,21 @@ File thực thi sẽ nằm trong thư mục `dist/`.
 
 ---
 
+## Changelog
+
+### v1.2 (Đêm 22/5/2026)
+- ✅ **Sửa audio alternation** — nhạc nền luân phiên mượt mà, không bị lặp lại từ đầu khi chuyển state
+- ✅ **Sửa Level 0 Tutorial** — quái chỉ spawn Lurker, tự động đi tới tháp ngẫu nhiên, bị bắn khi trong tầm
+- ✅ **Shapeswar.exe** — thêm icon, tối ưu hóa, bao gồm tất cả fixes
+
+### v1.0 (18–21/05/2026)
+- Game Tower Defense cơ bản với 8 level campaign
+- 6 loại tháp, 6 loại quái, hệ thống thùng tiến độ
+- Video intro/logo, UI, lưu tiến độ
+
+---
+
 ## Credits
 
 - **Người phát triển:** Bersious
-- **Hoàn thành:** 18–21/05/2026
+- **Hoàn thành:** 18–22/05/2026
