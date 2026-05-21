@@ -33,6 +33,19 @@ Một game Tower Defense đậm chất ?, được viết hoàn toàn bằng Pyt
 
 ---
 
+## 📸 Screenshots
+
+| | |
+|:--:|:--:|
+| ![Menu](assets/demo/01-menu.png) | ![Gameplay](assets/demo/02-gameplay.png) |
+| *Menu chính* | *Gameplay* |
+| ![Battle](assets/demo/03-battle.png) | ![Tower Select](assets/demo/04-tower-select.png) |
+| *Chiến đấu* | *Chọn tháp* |
+| ![Wave Preview](assets/demo/05-wave-preview.png) | ![Victory](assets/demo/06-victory.png) |
+| *Xem trước wave* | *Chiến thắng* |
+
+---
+
 ## Giới thiệu
 
 **Hắc Quốc Thủ Thành** là game Tower Defense lấy cảm hứng từ một câu chuyện khoa học viễn tưởng, nơi thế giới bị chia cắt mạnh mẽ bởi 2 chủng tộc và 2 thế giới đối lập nhau. Người chơi điều khiển Nữ hoàng Thanh Hoa của Hắc Quốc, xây dựng hệ thống tháp phòng thủ để chống lại đại quân Bạch Quốc xâm lược.
