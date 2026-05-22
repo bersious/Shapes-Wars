@@ -9,7 +9,7 @@ Một game Tower Defense đậm chất ?, được viết hoàn toàn bằng Pyt
 ### Cách 1: Chạy file .exe (đơn giản nhất)
 
 1. Vào trang [Releases](https://github.com/bersious/Shapes-Wars/releases) trên GitHub
-2. Tải file `ShapesWar.exe` mới nhất về
+2. Tải file `ShapesWar.zip` mới nhất về
 3. Giải nén (nếu có) và chạy `ShapesWar.exe`
 4. Xong! Không cần cài Python hay bất kỳ phần mềm nào khác
 
